@@ -1,0 +1,949 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  CATS, DOMAINS, DOW, RECOV, RECOV_DEFAULT, REPEATS, SLOTS, STORAGE_KEY, TYPES, UNIT_STEP,
+} from "../lib/constants";
+import {
+  bar, box, chip, goalProgress, ingTxt, macroTxt,
+  mealFor, plan, prose, recOf, recovScore, sessionType, tag, targetsOf, taskLink,
+} from "../lib/logic";
+import { buildMeals, buildSeed } from "../lib/seed";
+import {
+  addDays, catOf, distNum, fmtFull, fmtLong, fmtShort, hash, iso, monday, monthKey, normDist, parseIngLines, parseIso, weekKey,
+} from "../lib/utils";
+
+const HYDRATION_TARGET_L = 3;
+const TAB_DEFS = [
+  ["today", "Today", "01"], ["nutrition", "Nutrition", "02"], ["sprint", "Sprint", "03"],
+  ["goals", "Goals", "04"], ["track", "Tracking", "05"], ["settings", "Settings", "06"],
+];
+const THEME_KEY = "oslife.theme";
+
+// One-time content migration: replace the meal library with the phase-1 set
+// for anyone who already has saved data from before it existed. Idempotent —
+// checks a version stamp on the data itself, not on when the app loaded.
+function migrateMeals(d) {
+  if (d.mealSetVersion >= 2) return false;
+  d.meals = buildMeals();
+  d.mealSetVersion = 2;
+  d.weeklyDigest = d.weeklyDigest || { fired: {} };
+  return true;
+}
+
+function loadOrSeed() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d && d.version === 4) {
+        if (migrateMeals(d)) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch { /* ignore */ } }
+        return d;
+      }
+    }
+  } catch { /* ignore */ }
+  const d = buildSeed(HYDRATION_TARGET_L);
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch { /* ignore */ }
+  return d;
+}
+function persist(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+}
+
+const DB_PATH = "lifeos/data";
+
+export function useLifeOS() {
+  const [data, setData] = useState(loadOrSeed);
+  const [syncMode, setSyncMode] = useState("checking"); // "checking" | "cloud" | "local"
+  const [tab, setTab] = useState("today");
+  const [toasts, setToasts] = useState([]);
+  const [selDay, setSelDay] = useState(() => iso(new Date()));
+  const [chartDist, setChartDist] = useState("100 m");
+  const [ssub, setSsub] = useState("times");
+  const [nsub, setNsub] = useState("day");
+  const [gsub, setGsub] = useState("horizons");
+  const [tsub, setTsub] = useState("books");
+  const [libFilter, setLibFilter] = useState("All");
+  const [scope, setScope] = useState("daily");
+  const [skillFilter, setSkillFilter] = useState("All");
+  const [timeKind, setTimeKind] = useState("test");
+  const [editingMealId, setEditingMealId] = useState(null);
+  const [themePref, setThemePrefState] = useState(() => {
+    try { return localStorage.getItem(THEME_KEY) || "system"; } catch { return "system"; }
+  });
+
+  function setThemePref(pref) {
+    setThemePrefState(pref);
+    try { localStorage.setItem(THEME_KEY, pref); } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (themePref === "light" || themePref === "dark") root.setAttribute("data-theme", themePref);
+    else root.removeAttribute("data-theme");
+  }, [themePref]);
+  const [notif, setNotif] = useState(() => (typeof Notification !== "undefined" ? Notification.permission : "unsupported"));
+
+  const timers = useRef([]);
+  const refsStore = useRef({});
+  const dataRef = useRef(data);
+  const dbDocRef = useRef(null);
+  function ref(key) {
+    const r = refsStore.current;
+    if (!r[key]) r[key] = { current: null };
+    return r[key];
+  }
+
+  // Local edits: update state, cache to localStorage, and push the whole
+  // document to the cloud store when it's available. dataRef stays in sync
+  // synchronously so a rapid run of edits (and checkHydra) always builds on
+  // the latest value instead of a stale render's closure.
+  function mut(fn) {
+    const next = structuredClone(dataRef.current);
+    fn(next);
+    dataRef.current = next;
+    setData(next);
+    persist(next);
+    if (dbDocRef.current) dbDocRef.current.set(next).catch(() => {});
+  }
+
+  // Cloud updates land here — never re-written back to the store, or every
+  // viewer's snapshot would retrigger every other viewer's write forever.
+  function applyRemote(remote) {
+    dataRef.current = remote;
+    setData(remote);
+    persist(remote);
+  }
+
+  function toast(kicker, msg) {
+    const id = Math.random();
+    setToasts((s) => [...s, { id, kicker, msg }]);
+    const t = setTimeout(() => setToasts((s) => s.filter((x) => x.id !== id)), 3800);
+    timers.current.push(t);
+  }
+
+  function notify(title, body) {
+    try {
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        new Notification(title, { body, tag: "lifeos-hydra" });
+        return true;
+      }
+    } catch { /* ignore */ }
+    return false;
+  }
+
+  function nextReminder(d) {
+    const now = new Date(), k = iso(now), done = d.hydra.done[k] || {};
+    const cur = now.getHours() * 60 + now.getMinutes();
+    for (const s of d.hydra.slots) {
+      const p = s.split(":"), m = +p[0] * 60 + +p[1];
+      if (!done[s] && m <= cur + 30) return s;
+    }
+    return d.hydra.slots.filter((s) => !done[s])[0] || null;
+  }
+
+  function checkHydra() {
+    const d = structuredClone(dataRef.current);
+    const now = new Date(), k = iso(now), cur = now.getHours() * 60 + now.getMinutes();
+    const fired = d.hydra.fired[k] || {};
+    let hit = null;
+    for (const s of d.hydra.slots) {
+      const p = s.split(":"), m = +p[0] * 60 + +p[1];
+      if (!fired[s] && cur >= m && cur - m < 120 && !(d.hydra.done[k] || {})[s]) { hit = s; break; }
+    }
+    if (!hit) return;
+    d.hydra.fired[k] = d.hydra.fired[k] || {};
+    d.hydra.fired[k][hit] = true;
+    dataRef.current = d;
+    setData(d);
+    persist(d);
+    if (dbDocRef.current) dbDocRef.current.set(d).catch(() => {});
+    const body = "Glass due at " + hit + " — target " + d.hydra.targetL + " L today.";
+    notify("Hydration · Life OS", body);
+    toast("Reminder " + hit, body);
+  }
+
+  // Sunday 20:00 — a text summary of the week's daily check-ins ("Mon 7.2 ·
+  // Tue — · … — average 7.4/10"). Same honest limitation as hydration
+  // reminders: this only fires while the app happens to be open (foreground
+  // or a lingering tab) around that time — there's no backend to wake it
+  // otherwise. Fires at most once per week (tracked in weeklyDigest.fired).
+  function checkWeeklyDigest() {
+    const now = new Date();
+    if (now.getDay() !== 0 || now.getHours() < 20) return;
+    const d = dataRef.current;
+    const wk = weekKey(now);
+    if (d.weeklyDigest && d.weeklyDigest.fired && d.weeklyDigest.fired[wk]) return;
+    const mon = monday(now);
+    const scores = Array.from({ length: 7 }, (_, i) => {
+      const k = iso(addDays(mon, i));
+      return { dow: DOW[parseIso(k).getDay()], s: recovScore(d.recovery[k]) };
+    });
+    const vals = scores.filter((x) => x.s !== null).map((x) => x.s);
+    const avg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null;
+    const body = scores.map((x) => x.dow + " " + (x.s === null ? "—" : x.s.toFixed(1))).join(" · ") + (avg !== null ? " — average " + avg + "/10" : " — nothing logged this week");
+    const next = structuredClone(d);
+    next.weeklyDigest = next.weeklyDigest || { fired: {} };
+    next.weeklyDigest.fired[wk] = true;
+    dataRef.current = next;
+    setData(next);
+    persist(next);
+    if (dbDocRef.current) dbDocRef.current.set(next).catch(() => {});
+    notify("This week’s form · Life OS", body);
+    toast("This week’s form", body);
+  }
+
+  useEffect(() => {
+    checkHydra();
+    checkWeeklyDigest();
+    const iv = setInterval(() => { checkHydra(); checkWeeklyDigest(); }, 20000);
+    timers.current.push(iv);
+    return () => {
+      timers.current.forEach((t) => { clearTimeout(t); clearInterval(t); });
+      timers.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cloud store: available only when this page is opened through the
+  // claude.ai viewer with the db capability granted. Falls back to
+  // localStorage-only (already the default above) everywhere else.
+  useEffect(() => {
+    let cancelled = false;
+    let unsub = null;
+    (async () => {
+      const c = typeof window !== "undefined" ? window.claude : undefined;
+      if (!c || typeof c.use !== "function") { setSyncMode("local"); return; }
+      let db = null;
+      try { db = await c.use("db"); } catch { db = null; }
+      if (cancelled || !db) { if (!cancelled) setSyncMode("local"); return; }
+      const docRef = db.doc(DB_PATH);
+      unsub = docRef.onSnapshot(
+        (snap) => {
+          if (cancelled) return;
+          if (snap.exists) {
+            const remote = snap.data();
+            if (remote && remote.version === 4) {
+              const migrated = migrateMeals(remote);
+              applyRemote(remote);
+              if (migrated) docRef.set(remote).catch(() => {});
+            }
+          } else {
+            docRef.set(dataRef.current).catch(() => {});
+          }
+          dbDocRef.current = docRef;
+          setSyncMode("cloud");
+        },
+        () => setSyncMode("local"),
+      );
+    })();
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+      dbDocRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (syncMode === "checking") return;
+    toast(
+      "Storage",
+      syncMode === "cloud" ? "Cloud sync on — saved to your account, kept across devices." : "Saved on this device only — cloud sync isn’t available here.",
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncMode]);
+
+  function askNotif() {
+    if (typeof Notification === "undefined") { toast("Notifications", "This browser does not support them."); return; }
+    Notification.requestPermission().then((p) => {
+      setNotif(p);
+      if (p === "granted") {
+        notify("Hydration · Life OS", "Reminders on — a glass at each time you chose.");
+        toast("Notifications", "Enabled for your hydration times.");
+      } else {
+        toast("Notifications", "Declined — reminders will stay as in-app banners.");
+      }
+    }).catch(() => toast("Notifications", "Could not request permission here."));
+  }
+
+  // ---- shared derived data ----
+  const now = new Date();
+  const tk = iso(now);
+  const mon = monday(now);
+
+  function planOf(d, k) { return plan(d, k, hash); }
+  function taskDoneOf(t, date) { return !!(t.done || {})[taskKeyOf(t, date)]; }
+  function taskKeyOf(t, date) {
+    if (t.repeat === "daily") return iso(date);
+    if (t.repeat === "weekly") return weekKey(date);
+    if (t.repeat === "monthly") return monthKey(date);
+    return "once";
+  }
+
+  function toggleTask(id, from) {
+    let after = false, title = "";
+    mut((d) => {
+      const t = d.tasks.filter((x) => x.id === id)[0];
+      if (!t) return;
+      t.done = t.done || {};
+      const k = taskKeyOf(t, now);
+      t.done[k] = !t.done[k];
+      after = t.done[k];
+      title = t.title;
+    });
+    if (title) toast(from === "today" ? "Synced" : "To-do", after ? "“" + title + "” ticked — updated in " + (from === "today" ? "Goals" : "Today") + "." : "“" + title + "” reopened.");
+  }
+
+  function swapMeal(d, k, slot) {
+    mut((x) => { x.picks[k + "|" + slot] = (x.picks[k + "|" + slot] || 0) + 1 + Math.floor(Math.random() * 3); });
+    const m2 = mealFor(d, k, slot, hash);
+    toast("Rotation", m2 ? slot + " → " + m2.name : "No meal available for this slot.");
+  }
+
+  function shopAgg(d) {
+    const agg = {};
+    for (let i = 0; i < 7; i++) {
+      const k = iso(addDays(mon, i));
+      planOf(d, k).forEach((o) => o.m.ing.forEach((g) => {
+        const key = "a:" + g.n + "|" + g.u;
+        agg[key] = agg[key] || { key, n: g.n, u: g.u, c: g.c || catOf(g.n), q: 0, auto: true };
+        agg[key].q += g.q;
+      }));
+    }
+    d.shopExtra.forEach((e) => { agg["x:" + e.id] = { key: "x:" + e.id, n: e.n, u: e.u, c: e.c, q: e.q, auto: false, id: e.id }; });
+    return Object.keys(agg).map((k) => agg[k]).filter((i) => !d.shopHidden[i.key]).map((i) => {
+      const ov = d.shopQty[i.key];
+      return Object.assign({}, i, { q: ov === undefined ? i.q : ov });
+    });
+  }
+  function shopSetQty(item, delta) {
+    const step = UNIT_STEP[item.u] ?? 1;
+    mut((d) => {
+      const cur = d.shopQty[item.key] === undefined ? item.q : d.shopQty[item.key];
+      d.shopQty[item.key] = Math.max(0, Math.round((cur + delta * step) * 100) / 100);
+    });
+  }
+
+  const vals = useMemo(
+    () => computeVals(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, tab, toasts, selDay, chartDist, ssub, nsub, gsub, tsub, libFilter, scope, skillFilter, timeKind, notif, editingMealId, syncMode],
+  );
+
+  function computeVals() {
+    const d = data;
+    const type = sessionType(d, tk);
+    const rec = Object.assign({}, RECOV_DEFAULT, d.recovery[tk] || {});
+    const recScore = recovScore(d.recovery[tk]);
+    const recovLabel = recScore === null ? "Not logged" : recScore >= 7.5 ? "Good" : recScore >= 5.5 ? "Moderate" : "Low";
+    const glassCount = Math.round(d.hydra.targetL / 0.25);
+    const glassesDone = d.hydra.glasses[tk] || 0;
+    const weekDays = Array.from({ length: 7 }, (_, i) => iso(addDays(mon, i)));
+    const todayTasks = d.tasks.filter((t) => t.repeat === "daily" || (t.repeat === "once" && t.date === tk));
+    const openTasks = todayTasks.filter((t) => !taskDoneOf(t, now)).length;
+
+    const v = {
+      tabs: TAB_DEFS.map((t) => ({
+        num: t[2], label: t[1], pick: () => setTab(t[0]),
+        st: { flex: 1, border: 0, borderTop: "3px solid " + (tab === t[0] ? "var(--green)" : "transparent"), marginTop: "-3px", background: tab === t[0] ? "var(--panel)" : "transparent", color: tab === t[0] ? "var(--text)" : "var(--muted)", padding: "11px 4px 13px", cursor: "pointer", fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif", fontWeight: tab === t[0] ? 800 : 700 },
+      })),
+      tab,
+      isToday: tab === "today", isNutri: tab === "nutrition", isSprint: tab === "sprint", isGoals: tab === "goals", isTrack: tab === "track", isSettings: tab === "settings",
+      head: { date: fmtLong(now), week: Math.max(1, Math.floor((monday(now) - parseIso(d.startWeek || tk)) / 604800000) + 1) },
+      toasts: toasts.map((t) => Object.assign({}, t, {
+        st: { pointerEvents: "auto", maxWidth: "420px", background: "var(--text)", color: "var(--bg)", padding: "12px 16px", borderLeft: "3px solid var(--green)", borderRadius: "99px", boxShadow: "0 12px 32px var(--shadow)", animation: "osToast .22s ease-out" },
+      })),
+    };
+
+    // ---- TODAY ----
+    const todayLearning = d.learnings.filter((l) => l.date === tk)[0];
+    const curBook = d.books.filter((b) => b.status === "Reading")[0] || d.books.filter((b) => b.status === "To read")[0] || d.books[0];
+    const checkinText = (() => {
+      const s = recScore === null ? "—" : recScore.toFixed(1);
+      const lines = RECOV.map((m) => m.label + ": " + (rec[m.k] === null || rec[m.k] === undefined ? "—" : rec[m.k] + "/10"));
+      return "Daily check-in — " + fmtFull(tk) + "\n" + TYPES[type] + "\n\n" + lines.join("\n") + "\n\nOverall: " + s + "/10 (" + recovLabel + ")" + (rec.note ? "\nNote: " + rec.note : "");
+    })();
+    v.today = {
+      headline: TYPES[type] + " · " + openTasks + (openTasks === 1 ? " task" : " tasks") + " left to close" + (recScore === null ? " · check-in not filled in yet." : " · form " + recScore.toFixed(1) + "/10."),
+      formItems: RECOV.map((m) => ({ label: m.short, val: rec[m.k] === null || rec[m.k] === undefined ? "—" : rec[m.k] })),
+      formAdvice: recScore === null ? "Nothing rated today — six quick sliders and you have your number."
+        : recScore >= 7.5 ? "Green light: full intensity on today’s session."
+        : recScore >= 5.5 ? "Fine to train with volume cut by about 20 %."
+        : "Load is not being absorbed: active rest or technique only.",
+      checkinLabel: recScore === null ? "Fill in the check-in →" : "Adjust the check-in →",
+      goCheckin: () => { setTab("sprint"); setSsub("checkin"); },
+      goReading: () => { setTab("track"); setTsub("books"); },
+      share: () => {
+        const payload = { title: "Daily check-in", text: checkinText };
+        if (typeof navigator !== "undefined" && navigator.share) {
+          navigator.share(payload).then(() => toast("Shared", "Check-in sent.")).catch(() => {});
+          return;
+        }
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          navigator.clipboard.writeText(checkinText).then(() => toast("Copied", "Check-in copied — paste it into a message.")).catch(() => {});
+        }
+        try { window.open("sms:?body=" + encodeURIComponent(checkinText), "_self"); } catch { /* ignore */ }
+      },
+      bookTitle: curBook ? curBook.title : "Nothing on the go",
+      bookAuthor: curBook ? (curBook.author || "—") + " · " + curBook.status : "Add a book under Tracking → Reading",
+      bookRating: curBook ? (curBook.rating || 0) + " / 10" : "",
+      bookStars: curBook ? Array.from({ length: 10 }, (_, i) => ({ st: { font: "700 18px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: i < (curBook.rating || 0) ? "var(--red)" : "var(--line)" } })) : [],
+      bookNote: curBook ? (curBook.review || "No note yet — tap through to write one.") : "",
+      recovLabel, scoreTxt: recScore === null ? "—" : recScore.toFixed(1),
+      tasks: todayTasks.map((t) => {
+        const done = taskDoneOf(t, now);
+        return { id: t.id, title: t.title, link: taskLink(d, t, fmtShort), box: box(done), mark: done ? "✓" : "", name: strikeStyle(done), toggle: () => toggleTask(t.id, "today") };
+      }),
+      addTask: (e) => {
+        e.preventDefault();
+        const el = ref("todayTask").current, v2 = el && el.value.trim();
+        if (!v2) return;
+        mut((x) => { x.tasks.push({ id: "t" + Date.now(), title: v2, goal: null, repeat: "once", date: tk, done: {} }); });
+        el.value = "";
+        toast("Goals", "Task added to today’s list.");
+      },
+      goals: d.goals.filter((g) => !g.done).sort((a, b) => ((a.due || "9") < (b.due || "9") ? -1 : 1)).slice(0, 4).map((g) => {
+        const dom = DOMAINS.filter((x) => x.id === g.domain)[0];
+        const prog = goalProgress(d, g, weekKey, monthKey);
+        return { id: g.id, title: g.title, prog, bar: bar(prog, "var(--green)"), meta: (dom ? dom.name : "") + (g.due ? " · " + fmtShort(g.due) : "") };
+      }),
+      nextDeadline: (() => {
+        const up = d.goals.filter((g) => !g.done && g.due && g.due >= tk).sort((a, b) => (a.due < b.due ? -1 : 1))[0];
+        return up ? up.title + " — " + fmtShort(up.due) : "No deadline ahead";
+      })(),
+    };
+
+    // ---- NUTRITION ----
+    const sel = selDay;
+    const selPlan = planOf(d, sel);
+    const selTotals = selPlan.reduce((a, o) => ({ k: a.k + o.m.kcal, p: a.p + o.m.p, c: a.c + o.m.c, f: a.f + o.m.f }), { k: 0, p: 0, c: 0, f: 0 });
+    const lf = libFilter;
+    const shopItems = shopAgg(d);
+    v.nutri = {
+      subs: [["day", "Day"], ["meals", "Meals"], ["groceries", "Groceries"], ["hydration", "Hydration"]].map((s) => ({ key: s[0], label: s[1], st: chip(nsub === s[0]), pick: () => setNsub(s[0]) })),
+      isDay: nsub === "day", isLib: nsub === "meals", isShop: nsub === "groceries", isHydra: nsub === "hydration",
+      days: weekDays.map((k) => {
+        const dd = parseIso(k), t = sessionType(d, k), on = k === sel;
+        return {
+          key: k, dow: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dd.getDay()], num: dd.getDate(), tag: t === "rest" ? "rest" : "training",
+          pick: () => setSelDay(k),
+          st: { flex: "1 1 84px", border: "1px solid " + (on ? "var(--text)" : "var(--line)"), background: on ? "var(--text)" : "transparent", color: on ? "var(--bg)" : "var(--text)", padding: "9px 6px", borderRadius: "99px", cursor: "pointer", fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif", textAlign: "center" },
+        };
+      }),
+      selLabel: fmtLong(parseIso(sel)) + " · " + selPlan.length + " meals",
+      selMeals: selPlan.map((m) => ({ key: m.slot, slot: m.slot, time: m.time, title: m.m.name, macros: macroTxt(m.m), ingLine: ingTxt(m.m), swap: () => swapMeal(d, sel, m.slot) })),
+      totals: [
+        { label: "Kcal", val: selTotals.k },
+        { label: "Protein", val: selTotals.p + " g" },
+        { label: "Carbs", val: selTotals.c + " g" },
+        { label: "Fat", val: selTotals.f + " g" },
+      ],
+      libCount: d.meals.length + " saved",
+      libFilters: ["All"].concat(SLOTS).map((f) => ({ label: f, st: chip(lf === f), pick: () => setLibFilter(f) })),
+      lib: d.meals.filter((m) => lf === "All" || m.slot === lf).map((m) => ({
+        key: m.id, name: m.name, slot: m.slot, time: m.time,
+        dayTxt: m.day === "training" ? "Training day" : "Rest day",
+        slotTag: tag("var(--green-mid)"), dayTag: tag(m.day === "training" ? "var(--red-dark)" : "var(--hint)"),
+        macros: macroTxt(m), ingLine: ingTxt(m),
+        editing: editingMealId === m.id,
+        edit: () => setEditingMealId(m.id),
+        cancelEdit: () => setEditingMealId(null),
+        editVals: {
+          name: m.name, slot: m.slot, time: m.time, day: m.day,
+          kcal: m.kcal, p: m.p, c: m.c, f: m.f,
+          ingLines: m.ing.map((g) => g.n + " " + g.q + (g.u ? " " + g.u : "")).join("\n"),
+        },
+        refs: {
+          name: ref("em_name_" + m.id), slot: ref("em_slot_" + m.id), time: ref("em_time_" + m.id), day: ref("em_day_" + m.id),
+          kcal: ref("em_kcal_" + m.id), p: ref("em_p_" + m.id), c: ref("em_c_" + m.id), f: ref("em_f_" + m.id), ing: ref("em_ing_" + m.id),
+        },
+        saveEdit: (e) => {
+          e.preventDefault();
+          const r = { name: ref("em_name_" + m.id), slot: ref("em_slot_" + m.id), time: ref("em_time_" + m.id), day: ref("em_day_" + m.id), kcal: ref("em_kcal_" + m.id), p: ref("em_p_" + m.id), c: ref("em_c_" + m.id), f: ref("em_f_" + m.id), ing: ref("em_ing_" + m.id) };
+          const name = (r.name.current.value || "").trim();
+          if (!name) { toast("Meal", "The meal needs a name."); return; }
+          mut((x) => {
+            const q = x.meals.filter((y) => y.id === m.id)[0];
+            if (!q) return;
+            q.name = name; q.slot = r.slot.current.value; q.time = r.time.current.value || m.time; q.day = r.day.current.value;
+            q.kcal = +(r.kcal.current.value || 0); q.p = +(r.p.current.value || 0); q.c = +(r.c.current.value || 0); q.f = +(r.f.current.value || 0);
+            q.ing = parseIngLines(r.ing.current.value);
+          });
+          setEditingMealId(null);
+          toast("Meal library", "“" + name + "” updated.");
+        },
+        remove: () => { mut((x) => { x.meals = x.meals.filter((y) => y.id !== m.id); }); toast("Meal library", "“" + m.name + "” deleted."); },
+      })),
+      addMeal: (e) => {
+        e.preventDefault();
+        const name = (ref("mName").current.value || "").trim();
+        if (!name) { toast("Meal", "The meal needs a name."); return; }
+        const meal = {
+          id: "m" + Date.now(), name, slot: ref("mSlot").current.value, time: ref("mTime").current.value || "12:30", day: ref("mDay").current.value,
+          kcal: +(ref("mKcal").current.value || 0), p: +(ref("mP").current.value || 0), c: +(ref("mC").current.value || 0), f: +(ref("mF").current.value || 0),
+          ing: parseIngLines(ref("mIng").current.value),
+        };
+        mut((x) => { x.meals.unshift(meal); });
+        ["mName", "mKcal", "mP", "mC", "mF", "mIng"].forEach((k) => { ref(k).current.value = ""; });
+        toast("Meal library", "“" + name + "” added — it joins the rotation and the grocery list.");
+      },
+      cats: CATS.map((c) => ({ v: c })),
+      shopMeta: shopItems.length + " lines · week of " + fmtShort(weekDays[0]) + " to " + fmtShort(weekDays[6]),
+      shop: CATS.map((c) => ({
+        cat: c, items: shopItems.filter((i) => i.c === c).sort((a, b) => (a.n < b.n ? -1 : 1)).map((i) => {
+          const bought = !!d.bought[i.key];
+          return {
+            key: i.key, n: i.n, q: Math.round(i.q * 10) / 10 + (i.u ? " " + i.u : ""),
+            box: box(bought), mark: bought ? "✓" : "", name: strikeStyle(bought),
+            toggle: () => { mut((x) => { x.bought[i.key] = !x.bought[i.key]; }); },
+            plus: () => shopSetQty(i, 1), minus: () => shopSetQty(i, -1),
+            remove: () => { mut((x) => { if (i.auto) { x.shopHidden[i.key] = true; } else { x.shopExtra = x.shopExtra.filter((y) => y.id !== i.id); } }); },
+          };
+        }),
+      })).filter((c) => c.items.length),
+      regen: () => { mut((x) => { x.bought = {}; x.shopQty = {}; x.shopHidden = {}; }); toast("Groceries", "Quantities recomputed from this week’s meals."); },
+      addItem: (e) => {
+        e.preventDefault();
+        const n = (ref("sName").current.value || "").trim();
+        if (!n) return;
+        const item = { id: "x" + Date.now(), n, q: parseFloat((ref("sQty").current.value || "1").replace(",", ".")) || 1, u: ref("sUnit").current.value, c: ref("sCat").current.value };
+        mut((x) => { x.shopExtra.push(item); });
+        ref("sName").current.value = ""; ref("sQty").current.value = "";
+        toast("Groceries", n + " added to the list.");
+      },
+      waterTarget: d.hydra.targetL, glassCount, drunk: (glassesDone * 0.25).toFixed(2),
+      waterUp: () => mut((x) => { x.hydra.targetL = Math.round(Math.min(5, x.hydra.targetL + 0.25) * 100) / 100; }),
+      waterDown: () => mut((x) => { x.hydra.targetL = Math.round(Math.max(1.5, x.hydra.targetL - 0.25) * 100) / 100; }),
+      nextRemind: nextReminder(d) ? "Next reminder at " + nextReminder(d) + "." : "All of today’s reminders are done.",
+      slots: d.hydra.slots.map((s) => ({
+        t: s, st: { border: "1px solid var(--green-tint-line)", background: "var(--green-tint-bg)", color: "var(--green-mid)", padding: "6px 11px", borderRadius: "99px", font: "700 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", whiteSpace: "nowrap" },
+        remove: () => { mut((x) => { x.hydra.slots = x.hydra.slots.filter((y) => y !== s); }); toast("Reminders", s + " removed."); },
+      })),
+      addSlot: (e) => {
+        e.preventDefault();
+        const v2 = ref("slot").current && ref("slot").current.value;
+        if (!v2) return;
+        mut((x) => { if (x.hydra.slots.indexOf(v2) < 0) { x.hydra.slots.push(v2); x.hydra.slots.sort(); } });
+        toast("Reminders", "Reminder added at " + v2 + ".");
+      },
+      notifStatus: notif === "granted" ? "Allowed — a notification fires at each time while a tab is open." : notif === "denied" ? "Blocked by the browser: reminders show as in-app banners." : notif === "unsupported" ? "Not supported by this browser — in-app banners only." : "Not yet allowed.",
+      askLabel: notif === "granted" ? "Notifications on" : "Enable notifications",
+      askNotif: () => askNotif(),
+    };
+
+    // ---- SPRINT ----
+    const fmtT = (val) => val.toFixed(2);
+    const distsAll = Array.from(new Set(d.times.map((t) => t.dist).concat(d.targets.map((t) => t.dist)))).sort((a, b) => distNum(a) - distNum(b));
+    const cDist = distsAll.indexOf(chartDist) >= 0 ? chartDist : distsAll[0] || "";
+    const paceTxt = (g) => {
+      const r = recOf(d, g.dist);
+      if (!r) return "No time on this distance yet — log a reference run.";
+      const gap = Math.round((r.t - g.t) * 100) / 100;
+      if (gap <= 0) return "Already achieved (best " + fmtT(r.t) + ").";
+      const days = g.due ? Math.round((parseIso(g.due) - parseIso(tk)) / 86400000) : null;
+      if (days === null) return gap.toFixed(2) + " s to find off the best (" + fmtT(r.t) + "), no deadline set.";
+      if (days <= 0) return "Deadline passed — " + gap.toFixed(2) + " s were still to find.";
+      const months = Math.max(1, days / 30.4);
+      return gap.toFixed(2) + " s to find in " + days + " days — about " + (gap / months).toFixed(2) + " s per month.";
+    };
+    const chartList = d.times.filter((t) => t.dist === cDist).sort((a, b) => (a.date < b.date ? -1 : 1));
+    const chartTargets = targetsOf(d, cDist);
+    const cv = chartList.map((t) => t.t).concat(chartTargets.map((g) => g.t));
+    const cmin = cv.length ? Math.min.apply(null, cv) : 0, cmax = cv.length ? Math.max.apply(null, cv) : 1;
+    const span = cmax - cmin || 1, yOf = (val) => Math.round((10 + ((val - cmin) / span) * 100) * 10) / 10;
+    const xOf = (i) => (chartList.length > 1 ? Math.round((i / (chartList.length - 1)) * 318 * 10) / 10 : 160);
+    const trend = (() => {
+      if (chartList.length < 2) return "At least two times are needed to show a trend.";
+      const first = chartList[0], last = chartList[chartList.length - 1], diff = last.t - first.t;
+      return (diff < 0 ? Math.abs(diff).toFixed(2) + " s gained" : diff > 0 ? diff.toFixed(2) + " s lost" : "no change") + " since " + fmtShort(first.date) + " across " + chartList.length + " times.";
+    })();
+    const logDates = Object.keys(d.recovery).sort().reverse();
+    const sparkDays = Array.from({ length: 30 }, (_, i) => iso(addDays(now, -(29 - i))));
+    const sparkScores = sparkDays.map((k) => ({ k, s: recovScore(d.recovery[k]) }));
+    const sparkVals = sparkScores.filter((x) => x.s !== null).map((x) => x.s);
+
+    v.sprint = {
+      subs: [["times", "Times"], ["targets", "Targets"], ["checkin", "Daily check-in"], ["history", "History"]].map((s) => ({ key: s[0], label: s[1], st: chip(ssub === s[0]), pick: () => setSsub(s[0]) })),
+      isTimes: ssub === "times", isGoalsTab: ssub === "targets", isRecov: ssub === "checkin", isLog: ssub === "history",
+      byDist: distsAll.filter((dist) => d.times.some((t) => t.dist === dist)).map((dist) => {
+        const rows = d.times.filter((t) => t.dist === dist).sort((a, b) => (a.date < b.date ? 1 : -1));
+        const r = recOf(d, dist);
+        return {
+          dist, rec: r ? fmtT(r.t) : "—", recDate: r ? fmtShort(r.date) : "—", last: fmtT(rows[0].t), count: rows.length + (rows.length > 1 ? " times" : " time"),
+          targets: targetsOf(d, dist).map((g) => ({ t: fmtT(g.t), dueTxt: (g.label ? g.label + " · " : "") + (g.due ? fmtShort(g.due) : "no deadline"), pace: paceTxt(g) })),
+          rows: rows.map((t) => ({
+            key: t.id, date: fmtShort(t.date), t: fmtT(t.t), flag: r && t.id === r.id ? "best" : "",
+            kind: t.kind === "test" ? "test" : "training",
+            kindSt: Object.assign({}, tag(t.kind === "test" ? "var(--red)" : "var(--hint)"), { cursor: "default", padding: "2px 8px", fontSize: "10.5px" }),
+            remove: () => { mut((x) => { x.times = x.times.filter((y) => y.id !== t.id); }); toast("Times", fmtShort(t.date) + " time deleted."); },
+          })),
+        };
+      }),
+      emptyTimes: d.times.length ? "" : "No times yet — add the first one on the right.",
+      kinds: [["test", "Test / race"], ["training", "Training"]].map((k) => ({ label: k[1], st: chip(timeKind === k[0], k[0] === "test" ? "var(--red)" : "var(--green)"), pick: () => setTimeKind(k[0]) })),
+      addTime: (e) => {
+        e.preventDefault();
+        const dist = normDist(ref("timeDist").current.value);
+        const v2 = parseFloat((ref("timeVal").current.value || "").replace(",", "."));
+        if (!dist) { toast("Times", "Enter a distance (e.g. 40m)."); return; }
+        if (!v2) { toast("Times", "Enter a time in seconds."); return; }
+        const date = ref("timeDate").current.value || tk;
+        const prev = recOf(d, dist);
+        const kind = timeKind || "test";
+        mut((x) => { x.times.push({ id: "c" + Date.now(), date, dist, t: v2, kind }); });
+        ref("timeVal").current.value = "";
+        setChartDist(dist);
+        toast("Times", prev && v2 < prev.t && kind === "test" ? "Personal best over " + dist + ": " + fmtT(v2) + "!" : dist + " " + (kind === "test" ? "test" : "training") + " time saved.");
+      },
+      chartTabs: distsAll.map((dist) => ({ label: dist, st: chip(cDist === dist), pick: () => setChartDist(dist) })),
+      points: chartList.map((t, i) => xOf(i) + "," + yOf(t.t)).join(" "),
+      dots: chartList.map((t, i) => ({ x: xOf(i), y: yOf(t.t) })),
+      objLines: chartTargets.map((g) => ({ y: yOf(g.t) })),
+      chartObjTxt: chartTargets.length ? "— — target " + chartTargets.map((g) => fmtT(g.t)).join(" / ") : "no target on this distance",
+      chartFrom: chartList.length ? fmtShort(chartList[0].date) : "—",
+      chartTo: chartList.length ? fmtShort(chartList[chartList.length - 1].date) : "—",
+      chartSummary: (cDist ? cDist + " — " : "") + trend,
+      targets: d.targets.slice().sort((a, b) => distNum(a.dist) - distNum(b.dist)).map((g) => {
+        const r = recOf(d, g.dist), gap = r ? r.t - g.t : null;
+        const start = (() => { const l = d.times.filter((t) => t.dist === g.dist).sort((a, b) => (a.date < b.date ? -1 : 1)); return l.length ? l[0].t : null; })();
+        const prog = start !== null && r && start > g.t ? Math.max(0, Math.round(((start - r.t) / (start - g.t)) * 100)) : r && r.t <= g.t ? 100 : 0;
+        return {
+          key: g.id, dist: g.dist, t: fmtT(g.t), dueTxt: (g.label ? g.label + " · " : "") + (g.due ? fmtShort(g.due) : "no deadline"),
+          status: r ? (gap <= 0 ? "Achieved — best " + fmtT(r.t) : "Best " + fmtT(r.t) + " · " + gap.toFixed(2) + " s to find") : "No time on this distance yet",
+          bar: bar(prog, "var(--red)"), pace: paceTxt(g),
+          remove: () => { mut((x) => { x.targets = x.targets.filter((y) => y.id !== g.id); }); toast("Targets", g.dist + " target deleted."); },
+        };
+      }),
+      emptyTargets: d.targets.length ? "" : "No targets yet — add a distance and a time.",
+      addTarget: (e) => {
+        e.preventDefault();
+        const dist = normDist(ref("tgDist").current.value);
+        const v2 = parseFloat((ref("tgTime").current.value || "").replace(",", "."));
+        if (!dist || !v2) { toast("Targets", "Distance and target time are both needed."); return; }
+        const due = ref("tgDue").current.value || null, label = (ref("tgLabel").current.value || "").trim();
+        mut((x) => { x.targets.push({ id: "o" + Date.now(), dist, t: v2, due, label }); });
+        ref("tgTime").current.value = ""; ref("tgLabel").current.value = "";
+        setChartDist(dist);
+        toast("Targets", dist + " in " + fmtT(v2) + (due ? " by " + fmtShort(due) : "") + ".");
+      },
+      recovDate: fmtLong(now),
+      shareCheckin: () => v.today.share(),
+      dayTypes: ["track", "gym", "rest"].map((o) => ({
+        label: TYPES[o], st: chip(type === o, o === "rest" ? "var(--hint)" : o === "gym" ? "var(--red)" : "var(--green)"),
+        pick: () => { mut((x) => { x.sessions[tk] = o; }); toast("Today’s session", TYPES[o] + " · meals and calories recomputed."); },
+      })),
+      recov: RECOV.map((m) => {
+        const val = rec[m.k];
+        return {
+          key: m.k, label: m.label, hint: m.hint, valTxt: val === null || val === undefined ? "—" : val + " / 10",
+          steps: (m.opt ? [null] : []).concat([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).map((n) => ({
+            n: n === null ? "—" : n,
+            st: Object.assign({}, chip((val === undefined ? null : val) === n, m.k === "pain" ? "var(--red)" : "var(--green)"), { padding: "5px 9px", minWidth: "30px", textAlign: "center" }),
+            pick: () => { mut((x) => { x.recovery[tk] = Object.assign({}, RECOV_DEFAULT, x.recovery[tk] || {}, { type: sessionType(x, tk) }); x.recovery[tk][m.k] = n; }); },
+          })),
+        };
+      }),
+      recovScore: recScore === null ? "—" : recScore.toFixed(1),
+      recovVerdict: recovLabel,
+      recovAdvice: recScore === null ? "Rate at least one item to get today’s score."
+        : recScore >= 7.5 ? "Green light: full intensity on the planned session."
+        : recScore >= 5.5 ? "Session is fine with volume cut by about 20 %."
+        : "Load is not being absorbed: active rest or low-intensity technique only.",
+      saveNote: (e) => {
+        e.preventDefault();
+        const v2 = (ref("recNote").current.value || "").trim();
+        mut((x) => { x.recovery[tk] = Object.assign({}, RECOV_DEFAULT, x.recovery[tk] || {}, { note: v2, type: sessionType(x, tk) }); });
+        toast("Check-in", fmtShort(tk) + " saved to the history.");
+      },
+      spark: sparkScores.map((x) => ({
+        title: fmtShort(x.k) + (x.s === null ? " — not filled in" : " — " + x.s.toFixed(1) + "/10"),
+        st: { flex: 1, minWidth: "4px", height: x.s === null ? "3px" : Math.max(4, Math.round((x.s / 10) * 92)) + "px", background: x.s === null ? "var(--line2)" : x.s >= 7.5 ? "var(--green)" : x.s >= 5.5 ? "var(--streak-mid1)" : "var(--red)" },
+      })),
+      sparkFrom: fmtShort(sparkDays[0]),
+      sparkAvg: sparkVals.length ? "average " + (sparkVals.reduce((a, b) => a + b, 0) / sparkVals.length).toFixed(1) + "/10 over " + sparkVals.length + " days" : "no days filled in",
+      logCount: logDates.length + (logDates.length === 1 ? " day" : " days"),
+      log: logDates.map((k) => {
+        const e = d.recovery[k], s = recovScore(e);
+        return {
+          key: k, date: fmtShort(k), type: TYPES[e.type || sessionType(d, k)], score: s === null ? "—" : s.toFixed(1),
+          detail: RECOV.map((m) => m.short + " " + (e[m.k] === null || e[m.k] === undefined ? "—" : e[m.k])).join(" · "),
+          note: e.note || "",
+          remove: () => { mut((x) => { delete x.recovery[k]; }); toast("History", fmtShort(k) + " deleted."); },
+        };
+      }),
+    };
+
+    // ---- GOALS ----
+    v.goals = {
+      subs: [["horizons", "Horizons"], ["todo", "To-do"], ["ideas", "Idea box"]].map((s) => ({ key: s[0], label: s[1], st: chip(gsub === s[0]), pick: () => setGsub(s[0]) })),
+      isHorizons: gsub === "horizons", isTodo: gsub === "todo", isIdeas: gsub === "ideas",
+      domains: DOMAINS.map((dm, idx) => {
+        const list = d.goals.filter((g) => g.domain === dm.id);
+        const openCount = list.filter((g) => !g.done).length;
+        return {
+          key: dm.id, name: dm.name,
+          head: { font: "800 15px/1.25 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".01em", color: idx % 2 ? "var(--red-dark)" : "var(--green-mid)" },
+          count: list.length ? openCount + " open · " + list.length + " total" : "no goal yet",
+          goals: list.map((g) => {
+            const prog = goalProgress(d, g, weekKey, monthKey), rel = d.tasks.filter((t) => t.goal === g.id);
+            return {
+              key: g.id, title: g.title, prog, box: box(g.done), mark: g.done ? "✓" : "", name: strikeStyle(g.done, 15.5),
+              bar: bar(prog, g.done ? "var(--hint)" : idx % 2 ? "var(--red)" : "var(--green)"),
+              meta: (g.due ? "due " + fmtFull(g.due) : "no deadline") + (rel.length ? " · " + rel.filter((t) => taskDoneOf(t, now)).length + "/" + rel.length + " tasks done" : " · no task attached"),
+              toggle: () => { mut((x) => { const q = x.goals.filter((y) => y.id === g.id)[0]; q.done = !q.done; }); },
+              remove: () => { mut((x) => { x.goals = x.goals.filter((y) => y.id !== g.id); x.tasks.forEach((t) => { if (t.goal === g.id) t.goal = null; }); }); toast("Horizons", "“" + g.title + "” deleted."); },
+            };
+          }),
+          add: (e) => {
+            e.preventDefault();
+            const ti = ref("gt_" + dm.id).current, di = ref("gd_" + dm.id).current;
+            const v2 = (ti && ti.value || "").trim();
+            if (!v2) return;
+            const due = (di && di.value) || null;
+            mut((x) => { x.goals.push({ id: "g" + Date.now(), domain: dm.id, title: v2, due, done: false }); });
+            ti.value = ""; if (di) di.value = "";
+            toast(dm.name, "“" + v2 + "” added" + (due ? " · due " + fmtShort(due) : "") + ".");
+          },
+          refTitle: ref("gt_" + dm.id), refDue: ref("gd_" + dm.id),
+        };
+      }),
+      scopeTabs: ["daily", "weekly", "monthly", "once"].map((s) => ({ key: s, label: { daily: "Daily", weekly: "Weekly", monthly: "Monthly", once: "One-off" }[s], st: chip(scope === s), pick: () => setScope(s) })),
+      showDailyGrid: scope === "daily",
+      showWeeklyGrid: scope === "weekly",
+      dailyGrid: (() => {
+        const dailyTasks = d.tasks.filter((t) => t.repeat === "daily");
+        const start = monday(addDays(now, -364));
+        const cells = Array.from({ length: 371 }, (_, i) => {
+          const date = addDays(start, i);
+          const k = iso(date);
+          const future = date > now;
+          const pct = !future && dailyTasks.length ? dailyTasks.filter((t) => !!(t.done || {})[k]).length / dailyTasks.length : 0;
+          return { key: k, future, pct, title: future ? "" : fmtShort(k) + " — " + (dailyTasks.length ? Math.round(pct * 100) + "% of daily tasks" : "no daily tasks yet") };
+        });
+        return { cells, from: fmtShort(iso(start)), to: fmtShort(tk) };
+      })(),
+      weeklyGrid: (() => {
+        const weeklyTasks = d.tasks.filter((t) => t.repeat === "weekly");
+        const curMon = monday(now);
+        const cells = Array.from({ length: 52 }, (_, i) => {
+          const wkStart = addDays(curMon, -(51 - i) * 7);
+          const wk = weekKey(wkStart);
+          const future = wkStart > curMon;
+          const pct = !future && weeklyTasks.length ? weeklyTasks.filter((t) => !!(t.done || {})[wk]).length / weeklyTasks.length : 0;
+          return { key: wk, future, pct, title: future ? "" : "Week of " + fmtShort(iso(wkStart)) + " — " + (weeklyTasks.length ? Math.round(pct * 100) + "% of weekly tasks" : "no weekly tasks yet") };
+        });
+        return { cells, from: fmtShort(iso(addDays(curMon, -51 * 7))), to: fmtShort(iso(curMon)) };
+      })(),
+      tasks: d.tasks.filter((t) => t.repeat === scope).map((t) => {
+        const done = taskDoneOf(t, now);
+        return {
+          key: t.id, title: t.title, link: taskLink(d, t, fmtShort), box: box(done), mark: done ? "✓" : "", name: strikeStyle(done),
+          toggle: () => toggleTask(t.id, "goals"),
+          remove: () => { mut((x) => { x.tasks = x.tasks.filter((y) => y.id !== t.id); }); },
+        };
+      }),
+      tasksEmpty: d.tasks.filter((t) => t.repeat === scope).length ? "" : "Nothing here yet — add a task on the right.",
+      linkOpts: [{ v: "", l: "No goal" }].concat(d.goals.map((g) => {
+        const dom = DOMAINS.filter((x) => x.id === g.domain)[0];
+        return { v: g.id, l: (dom ? dom.name.split(" ")[0] + " — " : "") + g.title };
+      })),
+      addTask: (e) => {
+        e.preventDefault();
+        const v2 = (ref("gTask").current.value || "").trim();
+        if (!v2) return;
+        const repeat = ref("gRepeat").current.value, goal = ref("gGoal").current.value || null;
+        const date = repeat === "once" ? ref("gDate").current.value || tk : tk;
+        mut((x) => { x.tasks.push({ id: "t" + Date.now(), title: v2, goal, repeat, date, done: {} }); });
+        ref("gTask").current.value = ""; if (ref("gDate").current) ref("gDate").current.value = "";
+        setScope(repeat);
+        toast("To-do", repeat === "daily" ? "Added — it will show on Today every day." : REPEATS[repeat] + " task added.");
+      },
+      ideaCount: d.ideas.length + (d.ideas.length === 1 ? " entry" : " entries"),
+      ideas: d.ideas.map((i) => ({
+        key: i.id, text: i.text, date: fmtFull(i.date), textSt: prose(15),
+        remove: () => { mut((x) => { x.ideas = x.ideas.filter((y) => y.id !== i.id); }); },
+      })),
+      addIdea: (e) => {
+        e.preventDefault();
+        const v2 = (ref("idea").current.value || "").trim();
+        if (!v2) return;
+        mut((x) => { x.ideas.unshift({ id: "i" + Date.now(), text: v2, date: tk }); });
+        ref("idea").current.value = "";
+        toast("Idea box", "Kept, exactly as written.");
+      },
+    };
+
+    // ---- TRACKING ----
+    const sf = skillFilter;
+    v.track = {
+      subs: [["books", "Reading"], ["skills", "Skills"], ["learnings", "Learnings"]].map((s) => ({ key: s[0], label: s[1], st: chip(tsub === s[0]), pick: () => setTsub(s[0]) })),
+      isBooks: tsub === "books", isSkills: tsub === "skills", isLearn: tsub === "learnings",
+      bookMeta: (() => {
+        const f = d.books.filter((b) => b.status === "Finished").length, r = d.books.filter((b) => b.status === "Reading").length;
+        return f + " finished · " + r + " reading · " + d.books.length + " total";
+      })(),
+      books: d.books.map((b) => {
+        const cyc = { "To read": "Reading", Reading: "Finished", Finished: "To read" };
+        const c = b.status === "Reading" ? "var(--green)" : b.status === "Finished" ? "var(--hint)" : "var(--red)";
+        return {
+          key: b.id, t: b.title, a: b.author || "—", status: b.status, tag: tag(c), review: b.review || "", ratingTxt: (b.rating || 0) + " / 10",
+          stars: Array.from({ length: 10 }, (_, i) => ({
+            title: i + 1 + " / 10",
+            st: { border: 0, background: "transparent", padding: "0 1px", font: "700 19px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", color: i < (b.rating || 0) ? "var(--red)" : "var(--line)" },
+            pick: () => { mut((x) => { const q = x.books.filter((y) => y.id === b.id)[0]; q.rating = q.rating === i + 1 ? 0 : i + 1; }); },
+          })),
+          cycle: () => { mut((x) => { const q = x.books.filter((y) => y.id === b.id)[0]; q.status = cyc[q.status] || "To read"; }); },
+          remove: () => { mut((x) => { x.books = x.books.filter((y) => y.id !== b.id); }); toast("Reading", "“" + b.title + "” removed from the shelf."); },
+          refReview: ref("br_" + b.id), refQuote: ref("bq_" + b.id),
+          saveReview: (e) => {
+            e.preventDefault();
+            const v2 = ref("br_" + b.id).current && ref("br_" + b.id).current.value || "";
+            mut((x) => { const q = x.books.filter((y) => y.id === b.id)[0]; q.review = v2; });
+            toast("Reading", "Review saved for “" + b.title + "”.");
+          },
+          quotes: (b.quotes || []).map((q, qi) => ({
+            key: qi, text: "“" + q + "”", st: { flex: 1, minWidth: 0, font: "700 14px/1.6 'Plus Jakarta Sans',system-ui,sans-serif", fontStyle: "italic", color: "var(--muted)", whiteSpace: "pre-wrap" },
+            remove: () => { mut((x) => { const bk = x.books.filter((y) => y.id === b.id)[0]; bk.quotes = bk.quotes.filter((_, j) => j !== qi); }); },
+          })),
+          addQuote: (e) => {
+            e.preventDefault();
+            const v2 = (ref("bq_" + b.id).current && ref("bq_" + b.id).current.value || "").trim();
+            if (!v2) return;
+            mut((x) => { const bk = x.books.filter((y) => y.id === b.id)[0]; bk.quotes = (bk.quotes || []).concat([v2]); });
+            ref("bq_" + b.id).current.value = "";
+            toast("Reading", "Passage added.");
+          },
+        };
+      }),
+      addBook: (e) => {
+        e.preventDefault();
+        const t = (ref("bTitle").current.value || "").trim();
+        if (!t) return;
+        mut((x) => { x.books.unshift({ id: "b" + Date.now(), title: t, author: (ref("bAuthor").current.value || "").trim(), status: ref("bStatus").current.value, rating: 0, review: "", quotes: [] }); });
+        ref("bTitle").current.value = ""; ref("bAuthor").current.value = "";
+        toast("Reading", "“" + t + "” added to the shelf.");
+      },
+      skillTabs: ["All", "Learned", "Planned"].map((f) => ({ label: f, st: chip(sf === f), pick: () => setSkillFilter(f) })),
+      skills: d.skills.filter((s) => sf === "All" || (sf === "Learned" ? s.status === "learned" : s.status === "planned"))
+        .sort((a, b) => (a.status === b.status ? ((a.date || "") < (b.date || "") ? 1 : -1) : a.status === "planned" ? -1 : 1))
+        .map((s) => ({
+          key: s.id, n: s.name, note: s.note || "No note.", statusTxt: s.status === "learned" ? "Learned" : "Planned",
+          nameSt: { flex: 1, minWidth: 0, font: "700 16px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" },
+          tag: tag(s.status === "learned" ? "var(--green-mid)" : "var(--red-dark)"),
+          dateTxt: (s.status === "learned" ? "Learned on " : "Target ") + (s.date ? fmtFull(s.date) : "—"),
+          cycle: () => { mut((x) => { const q = x.skills.filter((y) => y.id === s.id)[0]; q.status = q.status === "learned" ? "planned" : "learned"; if (q.status === "learned") q.date = tk; }); },
+          remove: () => { mut((x) => { x.skills = x.skills.filter((y) => y.id !== s.id); }); toast("Skills", "“" + s.name + "” deleted."); },
+        })),
+      skillEmpty: d.skills.length ? "" : "Nothing here yet — add a skill on the right.",
+      addSkill: (e) => {
+        e.preventDefault();
+        const n = (ref("skName").current.value || "").trim();
+        if (!n) return;
+        const status = ref("skStatus").current.value, date = ref("skDate").current.value || tk;
+        mut((x) => { x.skills.unshift({ id: "sk" + Date.now(), name: n, note: (ref("skNote").current.value || "").trim(), status, date }); });
+        ref("skName").current.value = ""; ref("skNote").current.value = ""; ref("skDate").current.value = "";
+        toast("Skills", "“" + n + "” saved as " + (status === "learned" ? "learned" : "planned") + ".");
+      },
+      learnDate: fmtLong(now),
+      learnCount: d.learnings.length + (d.learnings.length === 1 ? " entry" : " entries"),
+      learnings: d.learnings.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((l) => ({
+        key: l.id, date: fmtFull(l.date), text: l.text, textSt: prose(15),
+        remove: () => { mut((x) => { x.learnings = x.learnings.filter((y) => y.id !== l.id); }); },
+      })),
+      learnEmpty: d.learnings.length ? "" : "Nothing recorded yet — write today’s learning on the left.",
+      learnStreak: (() => {
+        let n = 0;
+        for (let i = 0; i < 400; i++) {
+          const k = iso(addDays(now, -i));
+          if (d.learnings.some((l) => l.date === k)) n++; else break;
+        }
+        return todayLearning ? "Today is recorded · " + n + (n === 1 ? " day" : " days") + " in a row." : "Today is still empty.";
+      })(),
+      addLearning: (e) => {
+        e.preventDefault();
+        const v2 = (ref("lText").current.value || "").trim();
+        if (!v2) return;
+        mut((x) => { x.learnings = x.learnings.filter((l) => l.date !== tk); x.learnings.unshift({ id: "l" + Date.now(), date: tk, text: v2 }); });
+        ref("lText").current.value = "";
+        toast("Learnings", "Saved for " + fmtShort(tk) + ".");
+      },
+    };
+
+    return v;
+  }
+
+  // Manual backup: a plain JSON download/restore of the whole document.
+  // Independent of localStorage and the cloud store — the safety net when
+  // neither is guaranteed (e.g. a fresh, unclaimed host with a new origin
+  // on every deploy has no way to carry localStorage over on its own).
+  //
+  // A page framed in the claude.ai viewer can't trigger a browser download
+  // directly (the sandbox drops it silently) — that view has to hand the
+  // file to the viewer through the `downloads` capability instead. Anywhere
+  // else (this dev server, Netlify, any plain static host) there's no
+  // window.claude at all, so the ordinary <a download> trick is what runs.
+  async function exportData() {
+    const payload = JSON.stringify(dataRef.current, null, 2);
+    const filename = "life-os-backup-" + iso(new Date()) + ".json";
+    const c = typeof window !== "undefined" ? window.claude : undefined;
+    if (c && typeof c.use === "function") {
+      const downloads = await c.use("downloads").catch(() => null);
+      if (downloads) {
+        try {
+          await downloads.save({ filename, data: payload });
+          toast("Backup", "Saved — keep this file somewhere safe.");
+        } catch (e) {
+          if (!e || e.code !== "declined") toast("Backup", "Couldn’t save the backup here.");
+        }
+        return;
+      }
+    }
+    try {
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast("Backup", "Downloaded — keep this file somewhere safe.");
+    } catch {
+      toast("Backup", "Couldn’t start the download here.");
+    }
+  }
+
+  function importData(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed;
+      try { parsed = JSON.parse(String(reader.result)); } catch { parsed = null; }
+      if (!parsed || parsed.version !== 4) { toast("Backup", "That file doesn’t look like a Life OS backup."); return; }
+      dataRef.current = parsed;
+      setData(parsed);
+      persist(parsed);
+      if (dbDocRef.current) dbDocRef.current.set(parsed).catch(() => {});
+      toast("Backup", "Restored from backup.");
+    };
+    reader.onerror = () => toast("Backup", "Couldn’t read that file.");
+    reader.readAsText(file);
+  }
+
+  return {
+    vals, ref, syncMode, exportData, importData, themePref, setThemePref,
+    hydrationSlots: data.hydra.slots,
+    resetDemo: () => {
+      const s = buildSeed(HYDRATION_TARGET_L);
+      dataRef.current = s;
+      setData(s);
+      persist(s);
+      if (dbDocRef.current) dbDocRef.current.set(s).catch(() => {});
+      toast("Reset", "Demo data reloaded.");
+    },
+  };
+}
+
+function strikeStyle(done, size) {
+  return { display: "block", font: "700 " + (size || 15) + "px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", textDecoration: done ? "line-through" : "none", color: done ? "var(--faint)" : "var(--text)" };
+}

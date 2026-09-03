@@ -1,0 +1,297 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,600;0,700;0,800;1,600&display=swap");
+
+:root {
+  --bg: #ffffff;
+  --text: #16163d;
+  --text-hover: #0f0f2c;
+  --muted: #6b6b93;
+  --faint: #9998bf;
+  --hint: #8584ac;
+  --line: #e5e3f3;
+  --line2: #ece9f8;
+  --input-line: #c9c6e3;
+  --green: #1b1b4f;
+  --green-hover: #26265e;
+  --green-dark: #0f0f35;
+  --green-mid: #2d2d74;
+  --green-tint-bg: #eae8f6;
+  --green-tint-line: #d6d3ee;
+  --red: var(--green);
+  --red-dark: var(--green-dark);
+  --red-tint-line: var(--green-tint-line);
+  --panel: #edebf9;
+  --pill-hover: #e3e1f2;
+  --streak-mid1: #8a8ac4;
+  --streak-mid2: #4a4a96;
+  --shadow: rgba(27, 27, 79, .14);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e0e2e;
+    --text: #ecebfa;
+    --text-hover: #ffffff;
+    --muted: #a8a6d0;
+    --faint: #7c7aae;
+    --hint: #9391c4;
+    --line: #2c2c5c;
+    --line2: #23234c;
+    --input-line: #3e3e72;
+    --green: #8686e6;
+    --green-hover: #9797ee;
+    --green-dark: #dad8fb;
+    --green-mid: #a6a4f0;
+    --green-tint-bg: #23234c;
+    --green-tint-line: #34346a;
+    --red: var(--green);
+    --red-dark: var(--green-dark);
+    --red-tint-line: var(--green-tint-line);
+    --panel: #17173d;
+    --pill-hover: #23234c;
+    --streak-mid1: #4a4a8c;
+    --streak-mid2: #5f5fb0;
+    --shadow: rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e0e2e;
+  --text: #ecebfa;
+  --text-hover: #ffffff;
+  --muted: #a8a6d0;
+  --faint: #7c7aae;
+  --hint: #9391c4;
+  --line: #2c2c5c;
+  --line2: #23234c;
+  --input-line: #3e3e72;
+  --green: #8686e6;
+  --green-hover: #9797ee;
+  --green-dark: #dad8fb;
+  --green-mid: #a6a4f0;
+  --green-tint-bg: #23234c;
+  --green-tint-line: #34346a;
+  --red: var(--green);
+  --red-dark: var(--green-dark);
+  --red-tint-line: var(--green-tint-line);
+  --panel: #17173d;
+  --pill-hover: #23234c;
+  --streak-mid1: #4a4a8c;
+  --streak-mid2: #5f5fb0;
+  --shadow: rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-weight: 700;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100vh; }
+
+a { color: var(--green-mid); text-decoration: none; }
+a:hover { color: var(--green-dark); text-decoration: underline; }
+
+input, select, textarea, button {
+  font-family: inherit;
+  color: inherit;
+}
+
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+::selection { background: var(--green-tint-line); }
+
+@keyframes osToast {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.app { min-height: 100vh; background: var(--bg); padding: 0 0 calc(96px + env(safe-area-inset-bottom)); }
+
+/* ---- bottom nav ---- */
+.bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--bg); border-top: 3px solid var(--text);
+  display: flex; z-index: 40;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-nav button {
+  border: 0; cursor: pointer; font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+.bottom-nav button .num {
+  display: block; font: 700 9.5px/1 "Plus Jakarta Sans", system-ui, sans-serif;
+  letter-spacing: .16em; color: var(--faint);
+}
+.bottom-nav button .label {
+  display: block; margin-top: 6px; font-size: 12.5px; letter-spacing: .04em;
+}
+
+/* ---- toasts ---- */
+.toast-stack {
+  position: fixed; left: 0; right: 0; bottom: calc(78px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  pointer-events: none; z-index: 60; padding: 0 16px;
+}
+.toast-kicker {
+  font: 700 11.5px/1 "Plus Jakarta Sans", system-ui, sans-serif;
+  letter-spacing: .18em; text-transform: uppercase; opacity: .6;
+}
+.toast-msg {
+  display: block; font: 700 14.5px/1.35 "Plus Jakarta Sans", system-ui, sans-serif; margin-top: 5px;
+}
+
+/* ---- shell / header ---- */
+.shell { max-width: 1080px; margin: 0 auto; padding: 22px 20px 0; }
+.week-bar {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  border-bottom: 3px solid var(--text); padding-bottom: 6px;
+}
+.week-bar .week {
+  font: 800 15px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: .2em; text-transform: uppercase;
+}
+.week-bar .date {
+  font: 700 12px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--muted);
+  letter-spacing: .12em; text-transform: uppercase;
+}
+.week-rule { border-bottom: 1px solid var(--text); margin-top: 2px; }
+
+.backup-row {
+  display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+  margin-top: 7px;
+}
+.backup-row button {
+  border: 0; background: transparent; padding: 0; cursor: pointer;
+  font: 700 10.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--faint); text-decoration: underline;
+}
+.backup-row button:hover { color: var(--muted); }
+.backup-row span { font-size: 10.5px; color: var(--faint); }
+
+/* ---- streak grids (Goals > To-do) ---- */
+.streak-wrap { margin-bottom: 20px; }
+.streak-scroll { overflow-x: auto; padding-bottom: 2px; }
+.streak-grid-daily {
+  display: grid; grid-template-rows: repeat(7, 10px); grid-auto-flow: column; gap: 2px;
+  width: max-content;
+}
+.streak-grid-weekly {
+  display: flex; flex-wrap: wrap; gap: 3px; width: max-content;
+}
+.streak-cell { width: 10px; height: 10px; border-radius: 2px; border: 1px solid var(--line2); }
+.streak-cell.future { border: 1px dashed var(--line2); background: transparent !important; }
+.streak-legend {
+  display: flex; align-items: center; gap: 5px; margin-top: 8px;
+  font: 700 11px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint);
+}
+.streak-legend .streak-cell { width: 9px; height: 9px; }
+
+.page-title {
+  font: 800 46px/1.02 "Plus Jakarta Sans", system-ui, sans-serif; margin: 26px 0 4px; letter-spacing: -.015em;
+}
+
+.subtabs {
+  display: flex; gap: 7px; flex-wrap: wrap; border-bottom: 1px solid var(--line);
+  padding-bottom: 14px; margin-bottom: 22px;
+}
+
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px 28px; align-items: start;
+}
+.grid-wide { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.grid-wider { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+.grid > section {
+  background: var(--panel); border-radius: 24px; padding: 22px 24px;
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.section-title {
+  font: 800 14px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: .03em;
+  border-bottom: 1px solid var(--line); padding-bottom: 7px;
+}
+.section-title.green { color: var(--green); }
+.section-title.red { color: var(--red); }
+.section-title-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  border-bottom: 1px solid var(--line); padding-bottom: 7px;
+}
+.section-title-row .count { font: 700 11.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint); white-space: nowrap; }
+
+/* ---- form fields ---- */
+.field { margin-top: 16px; }
+.field label {
+  display: block; font: 700 11.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--hint); margin-bottom: 6px;
+}
+.field input[type="text"], .field input:not([type]), .field input[type="number"],
+.field input[type="date"], .field input[type="time"], .field select {
+  width: 100%; border: 0; border-bottom: 1px solid var(--input-line); background: transparent;
+  padding: 8px 2px; font: 700 15px/1.2 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+.field textarea {
+  width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 14px;
+  padding: 10px; font: 700 14px/1.5 "Plus Jakarta Sans", system-ui, sans-serif; resize: vertical;
+}
+.field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px; margin-top: 18px; }
+.field-grid.narrow { grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); }
+.field-label {
+  display: block; font: 700 11.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--hint); margin-bottom: 6px;
+}
+input.ln, select.ln {
+  width: 100%; border: 0; border-bottom: 1px solid var(--input-line); background: transparent;
+  padding: 8px 2px; font: 700 15px/1.2 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.inline-form { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.inline-form input { flex: 1; min-width: 140px; border: 0; border-bottom: 1px solid var(--input-line); background: transparent; padding: 7px 2px; font: 700 14px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; }
+
+/* ---- buttons ---- */
+.btn {
+  border: 1px solid var(--text); background: transparent; padding: 9px 15px; border-radius: 99px;
+  font: 700 13.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { background: var(--pill-hover); }
+.btn-dark { border: 1px solid var(--text); background: var(--text); color: var(--bg); }
+.btn-dark:hover { background: var(--text-hover); }
+.btn-green { border: 1px solid var(--green); background: var(--green); color: var(--bg); padding: 10px 16px; font-size: 14px; }
+.btn-green:hover { background: var(--green-hover); }
+.btn-green-outline { border: 1px solid var(--green); background: var(--green-tint-bg); color: var(--green-mid); padding: 9px 15px; }
+.btn-green-outline:hover { background: var(--green-tint-line); }
+.btn-small { padding: 7px 12px; font-size: 13px; }
+.btn-x {
+  border: 0; background: transparent; color: var(--input-line); padding: 0 2px;
+  font: 700 14px/1 "Plus Jakarta Sans", system-ui, sans-serif; cursor: pointer;
+}
+.btn-x:hover { color: var(--red-dark); }
+.link-btn { border: 0; background: transparent; padding: 0; color: var(--green-mid); font: 700 12.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; cursor: pointer; text-decoration: underline; }
+
+.rows-empty { font: 700 12.5px/1.5 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint); margin-top: 12px; }
+
+.row-line { padding: 13px 0; border-bottom: 1px solid var(--line2); }
+
+.hint { font: 700 11.5px/1.5 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint); margin-top: 5px; }
+
+/* ---- day cards (nutrition) ---- */
+.day-btn {
+  flex: 1 1 84px; border: 1px solid var(--line); background: transparent; color: var(--text);
+  padding: 9px 6px; border-radius: 99px; cursor: pointer; font-family: "Plus Jakarta Sans", system-ui, sans-serif; text-align: center;
+}
+.day-btn .dow { display: block; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; opacity: .65; }
+.day-btn .num { display: block; font-size: 17px; font-weight: 800; margin-top: 3px; }
+.day-btn .tag { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; opacity: .75; }
+
+@media (max-width: 640px) {
+  .page-title { font-size: 34px; }
+  .shell { padding: 18px 14px 0; }
+  /* iOS Safari auto-zooms into any input under 16px on focus — keep every
+     field at 16px on phone widths so tapping in never zooms the page. */
+  .field input, .field select, .field textarea, input.ln, select.ln, .inline-form input {
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Life OS",
+  "short_name": "Life OS",
+  "description": "A personal life OS — Today, Nutrition, Sprint & Recovery, Goals, and Tracking.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
