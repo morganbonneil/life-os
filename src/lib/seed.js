@@ -1,6 +1,21 @@
 import { DEFAULT_PLAN, RECOV_DEFAULT } from "./constants";
 import { addDays, ing, iso, monday, parseIso } from "./utils";
 
+// Starter deck for the language flashcards tool — a handful of Spanish
+// basics so the feature isn't empty on first use. Every card starts in
+// box 1, due today, so it shows up in the very first study session.
+export function buildFlashcards() {
+  const tk = iso(new Date());
+  return [
+    { id: "fc1", deckId: "fd1", front: "hola", back: "hello", box: 1, due: tk },
+    { id: "fc2", deckId: "fd1", front: "gracias", back: "thank you", box: 1, due: tk },
+    { id: "fc3", deckId: "fd1", front: "por favor", back: "please", box: 1, due: tk },
+    { id: "fc4", deckId: "fd1", front: "¿cómo estás?", back: "how are you?", box: 1, due: tk },
+    { id: "fc5", deckId: "fd1", front: "el entrenamiento", back: "the training", box: 1, due: tk },
+    { id: "fc6", deckId: "fd1", front: "el descanso", back: "the rest", box: 1, due: tk },
+  ];
+}
+
 export function buildMeals() {
   return [
     { id: "meal01", name: "Banane-Miel Express", slot: "Pre-training", time: "08:00", day: "training", kcal: 249, p: 6, c: 55, f: 2, ing: [ing("Banane", 101, "g"), ing("Pain blanc", 51, "g"), ing("Miel", 8, "g")] },
@@ -107,6 +122,8 @@ export function buildSeed(hydrationTargetL) {
     startWeek: iso(mon),
     hydra: { targetL: hydrationTargetL ?? 3, slots: ["07:30", "10:00", "12:30", "15:00", "17:30", "20:00"], done: {}, glasses: {}, fired: {} },
     sessions, meals, picks: {}, mealChoice: {}, mealsDone: {}, shopExtra: [], shopQty: {}, shopHidden: {}, bought: {},
+    flashDecks: [{ id: "fd1", name: "Spanish — Essentials" }],
+    flashCards: buildFlashcards(),
     times, recovery,
     targets: [
       { id: "o1", dist: "100 m", t: 11.2, due: "2026-12-25", label: "Christmas" },

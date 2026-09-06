@@ -153,6 +153,111 @@ export default function TrackingTab({ track, getRef }) {
           </section>
         </div>
       )}
+
+      {track.isFlash && (
+        <div className="grid grid-wide">
+          {track.flash.view === "study" && track.flash.study && (
+            <section style={{ gridColumn: "1 / -1", maxWidth: 420 }}>
+              <div className="section-title-row">
+                <span className="section-title green" style={{ border: 0, padding: 0 }}>Studying</span>
+                <span className="count">{track.flash.study.pos} / {track.flash.study.total} · {track.flash.study.correct} correct</span>
+              </div>
+              <div
+                className="flashcard"
+                onClick={!track.flash.study.flipped ? track.flash.study.flip : undefined}
+              >
+                <div style={{ font: "800 26px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", textAlign: "center" }}>
+                  {track.flash.study.flipped ? track.flash.study.back : track.flash.study.front}
+                </div>
+                {!track.flash.study.flipped && <div className="hint" style={{ marginTop: 14, textAlign: "center" }}>Tap to reveal</div>}
+              </div>
+              {track.flash.study.flipped ? (
+                <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                  <button onClick={track.flash.study.again} className="btn" style={{ flex: 1 }}>Again</button>
+                  <button onClick={track.flash.study.good} className="btn btn-green" style={{ flex: 1 }}>Got it</button>
+                </div>
+              ) : (
+                <button onClick={track.flash.study.flip} className="btn btn-dark" style={{ marginTop: 18, width: "100%" }}>Show answer</button>
+              )}
+              <button onClick={track.flash.study.end} className="link-btn" style={{ marginTop: 16, display: "block" }}>End session</button>
+            </section>
+          )}
+
+          {track.flash.view === "deck" && track.flash.deck && (
+            <>
+              <section>
+                <div className="section-title-row">
+                  <button onClick={track.flash.deck.back} className="link-btn" style={{ textDecoration: "none" }}>← Decks</button>
+                  <span className="count">{track.flash.deck.total} cards · {track.flash.deck.due} due · {track.flash.deck.mastered} mastered</span>
+                </div>
+                <div style={{ font: "800 22px/1.25 'Plus Jakarta Sans',system-ui,sans-serif", marginTop: 12 }}>{track.flash.deck.name}</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+                  <button onClick={track.flash.deck.studyDue} className="btn btn-green" disabled={!track.flash.deck.due}>Study due ({track.flash.deck.due})</button>
+                  <button onClick={track.flash.deck.studyAll} className="btn btn-green-outline" disabled={!track.flash.deck.total}>Practice all ({track.flash.deck.total})</button>
+                </div>
+                {track.flash.deck.cards.map((c) => (
+                  <div key={c.key} style={{ padding: "13px 0", borderBottom: "1px solid var(--line2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+                      <span style={{ font: "700 15px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" }}>{c.front} → {c.back}</span>
+                      <button onClick={c.remove} title="Delete" className="btn-x">✕</button>
+                    </div>
+                    <div style={{ font: "700 11.5px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{c.meta}</div>
+                  </div>
+                ))}
+                <div className="rows-empty">{track.flash.deck.cardsEmpty}</div>
+              </section>
+
+              <section>
+                <div className="section-title red">New card</div>
+                <form onSubmit={track.flash.deck.addCard}>
+                  <div className="field">
+                    <label>Front — the language you’re learning</label>
+                    <input ref={getRef("fcFront")} placeholder="por favor" />
+                  </div>
+                  <div className="field">
+                    <label>Back — the translation</label>
+                    <input ref={getRef("fcBack")} placeholder="please" />
+                  </div>
+                  <button type="submit" className="btn btn-green" style={{ marginTop: 16 }}>Add card</button>
+                </form>
+              </section>
+            </>
+          )}
+
+          {track.flash.view === "decks" && (
+            <>
+              <section>
+                <div className="section-title green">Decks</div>
+                {track.flash.decks.map((dk) => (
+                  <div key={dk.key} style={{ padding: "14px 0", borderBottom: "1px solid var(--line2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+                      <span onClick={dk.open} style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer" }}>{dk.name}</span>
+                      <button onClick={dk.remove} title="Delete" className="btn-x">✕</button>
+                    </div>
+                    <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 4 }}>{dk.total} cards · {dk.due} due today</div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button onClick={dk.open} className="btn btn-small">Open</button>
+                      <button onClick={dk.studyDue} className="btn btn-green btn-small" disabled={!dk.due}>Study due ({dk.due})</button>
+                    </div>
+                  </div>
+                ))}
+                <div className="rows-empty">{track.flash.decksEmpty}</div>
+              </section>
+
+              <section>
+                <div className="section-title red">New deck</div>
+                <form onSubmit={track.flash.addDeck}>
+                  <div className="field">
+                    <label>Language / deck name</label>
+                    <input ref={getRef("fdName")} placeholder="French — Verbs" />
+                  </div>
+                  <button type="submit" className="btn btn-green" style={{ marginTop: 16 }}>Create deck</button>
+                </form>
+              </section>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

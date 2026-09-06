@@ -185,6 +185,13 @@ input, select, textarea, button {
 .streak-cell { width: 10px; height: 10px; border-radius: 2px; border: 1px solid var(--line2); }
 .streak-cell.future { border: 1px dashed var(--line2); background: transparent !important; }
 .streak-cell.missed { background: var(--green-tint-bg); }
+
+/* ---- flashcards (Tracking > Flashcards > study session) ---- */
+.flashcard {
+  margin-top: 16px; min-height: 160px; border: 1px solid var(--green-tint-line); background: var(--green-tint-bg);
+  border-radius: 20px; padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; text-align: center;
+}
 .streak-legend {
   display: flex; align-items: center; gap: 5px; margin-top: 8px;
   font: 700 11px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint);
@@ -192,7 +199,7 @@ input, select, textarea, button {
 .streak-legend .streak-cell { width: 9px; height: 9px; }
 
 .page-title {
-  font: 800 46px/1.02 "Plus Jakarta Sans", system-ui, sans-serif; margin: 26px 0 4px; letter-spacing: -.015em;
+  font: 800 46px/1.02 "Plus Jakarta Sans", system-ui, sans-serif; margin: 26px 0 22px; letter-spacing: -.015em;
 }
 
 .subtabs {

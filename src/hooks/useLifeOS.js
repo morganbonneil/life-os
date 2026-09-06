@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CATS, DOMAINS, DOW, RECOV, RECOV_DEFAULT, REPEATS, SLOTS, STORAGE_KEY, TYPES, UNIT_STEP,
+  CATS, DOMAINS, DOW, FLASH_BOX_MAX, FLASH_INTERVALS_DAYS, RECOV, RECOV_DEFAULT, REPEATS, SLOTS, STORAGE_KEY, TYPES, UNIT_STEP,
 } from "../lib/constants";
 import {
   bar, box, candidates, chip, dayKind, goalProgress, ingTxt, macroTxt,
   plan, prose, recOf, recovScore, sessionType, tag, targetsOf, taskLink,
 } from "../lib/logic";
-import { buildMeals, buildSeed } from "../lib/seed";
+import { buildFlashcards, buildMeals, buildSeed } from "../lib/seed";
 import {
   addDays, catOf, distNum, fmtFull, fmtLong, fmtShort, hash, iso, monday, monthKey, normDist, parseIngLines, parseIso, weekKey,
 } from "../lib/utils";
@@ -29,13 +29,25 @@ function migrateMeals(d) {
   return true;
 }
 
+// One-time seed of the flashcards tool for anyone whose saved data predates
+// it — same idempotent pattern as migrateMeals, keyed on the field's mere
+// presence rather than a version number.
+function migrateFlashcards(d) {
+  if (d.flashDecks) return false;
+  d.flashDecks = [{ id: "fd1", name: "Spanish — Essentials" }];
+  d.flashCards = buildFlashcards();
+  return true;
+}
+
 function loadOrSeed() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
       if (d && d.version === 4) {
-        if (migrateMeals(d)) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch { /* ignore */ } }
+        const mealsChanged = migrateMeals(d);
+        const flashChanged = migrateFlashcards(d);
+        if (mealsChanged || flashChanged) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch { /* ignore */ } }
         return d;
       }
     }
@@ -66,6 +78,8 @@ export function useLifeOS() {
   const [skillFilter, setSkillFilter] = useState("All");
   const [timeKind, setTimeKind] = useState("test");
   const [editingMealId, setEditingMealId] = useState(null);
+  const [flashDeckId, setFlashDeckId] = useState(null);
+  const [flashStudy, setFlashStudy] = useState(null); // { deckId, queue: [cardId,...], pos, flipped, correct, seen }
   const [themePref, setThemePrefState] = useState(() => {
     try { return localStorage.getItem(THEME_KEY) || "system"; } catch { return "system"; }
   });
@@ -222,9 +236,10 @@ export function useLifeOS() {
           if (snap.exists) {
             const remote = snap.data();
             if (remote && remote.version === 4) {
-              const migrated = migrateMeals(remote);
+              const mealsChanged = migrateMeals(remote);
+              const flashChanged = migrateFlashcards(remote);
               applyRemote(remote);
-              if (migrated) docRef.set(remote).catch(() => {});
+              if (mealsChanged || flashChanged) docRef.set(remote).catch(() => {});
             }
           } else {
             docRef.set(dataRef.current).catch(() => {});
@@ -303,6 +318,49 @@ export function useLifeOS() {
     toast("Meal", mealId ? slot + " set to “" + mealName + "” for every " + (dayT === "training" ? "training" : "rest") + " day." : slot + " back to automatic rotation.");
   }
 
+  // Flashcards — Leitner scheduling. A study session is a shuffled queue of
+  // card ids; a wrong answer re-inserts the card a few slots further along
+  // the same queue (an immediate second try) in addition to resetting its
+  // box, so a missed card gets drilled again before the session ends.
+  function startStudy(deckId, onlyDue) {
+    const t = iso(new Date());
+    const cards = (dataRef.current.flashCards || []).filter((c) => c.deckId === deckId && (!onlyDue || c.due <= t));
+    if (!cards.length) { toast("Flashcards", onlyDue ? "Nothing due in this deck right now." : "This deck has no cards yet."); return; }
+    const ids = cards.map((c) => c.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = ids[i]; ids[i] = ids[j]; ids[j] = tmp;
+    }
+    setFlashStudy({ deckId, queue: ids, pos: 0, flipped: false, correct: 0, seen: 0 });
+  }
+
+  function answerCard(good) {
+    const s = flashStudy;
+    if (!s) return;
+    const cardId = s.queue[s.pos];
+    mut((x) => {
+      const c = (x.flashCards || []).filter((y) => y.id === cardId)[0];
+      if (!c) return;
+      if (good) {
+        c.box = Math.min(FLASH_BOX_MAX, (c.box || 1) + 1);
+        c.due = iso(addDays(new Date(), FLASH_INTERVALS_DAYS[c.box - 1]));
+      } else {
+        c.box = 1;
+        c.due = iso(addDays(new Date(), 1));
+      }
+    });
+    let queue = s.queue;
+    if (!good) { queue = queue.slice(); queue.splice(Math.min(queue.length, s.pos + 3), 0, cardId); }
+    const nextPos = s.pos + 1;
+    const seen = s.seen + 1, correct = s.correct + (good ? 1 : 0);
+    if (nextPos >= queue.length) {
+      toast("Flashcards", "Session done — " + correct + "/" + seen + " correct.");
+      setFlashStudy(null);
+    } else {
+      setFlashStudy({ deckId: s.deckId, queue, pos: nextPos, flipped: false, correct, seen });
+    }
+  }
+
   function shopAgg(d) {
     const agg = {};
     for (let i = 0; i < 7; i++) {
@@ -330,7 +388,7 @@ export function useLifeOS() {
   const vals = useMemo(
     () => computeVals(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, tab, toasts, selDay, chartDist, ssub, nsub, gsub, tsub, libFilter, scope, skillFilter, timeKind, notif, editingMealId, syncMode],
+    [data, tab, toasts, selDay, chartDist, ssub, nsub, gsub, tsub, libFilter, scope, skillFilter, timeKind, notif, editingMealId, syncMode, flashDeckId, flashStudy],
   );
 
   function computeVals() {
@@ -801,8 +859,8 @@ export function useLifeOS() {
     // ---- TRACKING ----
     const sf = skillFilter;
     v.track = {
-      subs: [["books", "Reading"], ["skills", "Skills"], ["learnings", "Learnings"]].map((s) => ({ key: s[0], label: s[1], st: chip(tsub === s[0]), pick: () => setTsub(s[0]) })),
-      isBooks: tsub === "books", isSkills: tsub === "skills", isLearn: tsub === "learnings",
+      subs: [["books", "Reading"], ["skills", "Skills"], ["learnings", "Learnings"], ["flashcards", "Flashcards"]].map((s) => ({ key: s[0], label: s[1], st: chip(tsub === s[0]), pick: () => setTsub(s[0]) })),
+      isBooks: tsub === "books", isSkills: tsub === "skills", isLearn: tsub === "learnings", isFlash: tsub === "flashcards",
       bookMeta: (() => {
         const f = d.books.filter((b) => b.status === "Finished").length, r = d.books.filter((b) => b.status === "Reading").length;
         return f + " finished · " + r + " reading · " + d.books.length + " total";
@@ -892,6 +950,81 @@ export function useLifeOS() {
         ref("lText").current.value = "";
         toast("Learnings", "Saved for " + fmtShort(tk) + ".");
       },
+      flash: (() => {
+        const flashDecks = d.flashDecks || [];
+        const flashCards = d.flashCards || [];
+        const cardsOf = (id) => flashCards.filter((c) => c.deckId === id);
+        const dueOf = (id) => cardsOf(id).filter((c) => c.due <= tk).length;
+
+        if (flashStudy) {
+          const card = flashCards.filter((c) => c.id === flashStudy.queue[flashStudy.pos])[0];
+          return {
+            view: "study",
+            study: !card ? null : {
+              pos: flashStudy.pos + 1, total: flashStudy.queue.length, correct: flashStudy.correct,
+              front: card.front, back: card.back, flipped: flashStudy.flipped,
+              flip: () => setFlashStudy((s) => (s ? Object.assign({}, s, { flipped: true }) : s)),
+              again: () => answerCard(false),
+              good: () => answerCard(true),
+              end: () => setFlashStudy(null),
+            },
+          };
+        }
+
+        const openDeck = flashDeckId ? flashDecks.filter((x) => x.id === flashDeckId)[0] : null;
+        if (openDeck) {
+          const cards = cardsOf(openDeck.id);
+          return {
+            view: "deck",
+            deck: {
+              id: openDeck.id, name: openDeck.name, back: () => setFlashDeckId(null),
+              total: cards.length, due: cards.filter((c) => c.due <= tk).length, mastered: cards.filter((c) => (c.box || 1) >= FLASH_BOX_MAX).length,
+              cards: cards.map((c) => ({
+                key: c.id, front: c.front, back: c.back,
+                meta: "Box " + (c.box || 1) + "/" + FLASH_BOX_MAX + " · " + (c.due <= tk ? "due now" : "due " + fmtShort(c.due)),
+                remove: () => { mut((x) => { x.flashCards = (x.flashCards || []).filter((y) => y.id !== c.id); }); },
+              })),
+              cardsEmpty: cards.length ? "" : "No cards yet — add the first one on the right.",
+              addCard: (e) => {
+                e.preventDefault();
+                const front = (ref("fcFront").current.value || "").trim();
+                const back = (ref("fcBack").current.value || "").trim();
+                if (!front || !back) { toast("Flashcards", "A card needs both sides filled in."); return; }
+                mut((x) => { x.flashCards = x.flashCards || []; x.flashCards.push({ id: "fc" + Date.now(), deckId: openDeck.id, front, back, box: 1, due: tk }); });
+                ref("fcFront").current.value = ""; ref("fcBack").current.value = "";
+                toast("Flashcards", "Card added.");
+              },
+              studyDue: () => startStudy(openDeck.id, true),
+              studyAll: () => startStudy(openDeck.id, false),
+            },
+          };
+        }
+
+        return {
+          view: "decks",
+          decks: flashDecks.map((dk) => ({
+            key: dk.id, name: dk.name, total: cardsOf(dk.id).length, due: dueOf(dk.id),
+            open: () => setFlashDeckId(dk.id),
+            studyDue: () => startStudy(dk.id, true),
+            remove: () => {
+              mut((x) => {
+                x.flashDecks = (x.flashDecks || []).filter((y) => y.id !== dk.id);
+                x.flashCards = (x.flashCards || []).filter((c) => c.deckId !== dk.id);
+              });
+              toast("Flashcards", "“" + dk.name + "” deck deleted.");
+            },
+          })),
+          decksEmpty: flashDecks.length ? "" : "No deck yet — create one on the right to start learning a language.",
+          addDeck: (e) => {
+            e.preventDefault();
+            const name = (ref("fdName").current.value || "").trim();
+            if (!name) return;
+            mut((x) => { x.flashDecks = x.flashDecks || []; x.flashDecks.push({ id: "fd" + Date.now(), name }); });
+            ref("fdName").current.value = "";
+            toast("Flashcards", "“" + name + "” deck created.");
+          },
+        };
+      })(),
     };
 
     return v;

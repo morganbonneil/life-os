@@ -65,3 +65,9 @@ export const DOMAINS = [
 ];
 
 export const REPEATS = { daily: "Every day", weekly: "Every week", monthly: "Every month", once: "One-off" };
+
+// Flashcards — a simple Leitner-style scheduler: 5 boxes, each with a longer
+// gap before the card is due again. A wrong answer always sends a card back
+// to box 1, due the next day.
+export const FLASH_BOX_MAX = 5;
+export const FLASH_INTERVALS_DAYS = [1, 2, 4, 8, 16];
