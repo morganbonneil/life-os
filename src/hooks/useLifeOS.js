@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CATS, DOMAINS, DOW, FLASH_BOX_MAX, FLASH_INTERVALS_DAYS, RECOV, RECOV_DEFAULT, REPEATS, SLOTS, STORAGE_KEY, TYPES, UNIT_STEP,
+  CATS, DEFAULT_PLAN, DOMAINS, DOW, FLASH_BOX_MAX, FLASH_INTERVALS_DAYS, RECOV, RECOV_DEFAULT, REPEATS, SLOTS, STORAGE_KEY, TYPES, UNIT_STEP,
 } from "../lib/constants";
 import {
   bar, box, candidates, chip, dayKind, goalProgress, ingTxt, macroTxt,
@@ -8,7 +8,7 @@ import {
 } from "../lib/logic";
 import { buildFlashcards, buildMeals, buildSeed } from "../lib/seed";
 import {
-  addDays, catOf, distNum, fmtFull, fmtLong, fmtShort, hash, iso, monday, monthKey, normDist, parseIngLines, parseIso, weekKey,
+  addDays, catOf, distNum, fmtFull, fmtLong, fmtShort, hash, iso, monday, monthKey, normDist, parseIngLines, parseIso, resizeImageFile, weekKey,
 } from "../lib/utils";
 
 const HYDRATION_TARGET_L = 3;
@@ -80,6 +80,7 @@ export function useLifeOS() {
   const [editingMealId, setEditingMealId] = useState(null);
   const [flashDeckId, setFlashDeckId] = useState(null);
   const [flashStudy, setFlashStudy] = useState(null); // { deckId, queue: [cardId,...], pos, flipped, correct, seen }
+  const [gridView, setGridView] = useState(null); // { kind: "daily", taskId } | { kind: "weekly" } | null
   const [themePref, setThemePrefState] = useState(() => {
     try { return localStorage.getItem(THEME_KEY) || "system"; } catch { return "system"; }
   });
@@ -318,6 +319,22 @@ export function useLifeOS() {
     toast("Meal", mealId ? slot + " set to “" + mealName + "” for every " + (dayT === "training" ? "training" : "rest") + " day." : slot + " back to automatic rotation.");
   }
 
+  // The recurring weekly pattern (which weekday defaults to track/gym/rest),
+  // editable from Settings. A specific date can still be overridden on top
+  // of this from Nutrition > Day (stored in data.sessions, checked first).
+  function cycleWeekPlanDay(dow) {
+    const order = ["track", "gym", "rest"];
+    const cur = (data.weekPlan && data.weekPlan[dow]) || DEFAULT_PLAN[dow];
+    const next = order[(order.indexOf(cur) + 1) % order.length];
+    mut((x) => { x.weekPlan = x.weekPlan || Object.assign({}, DEFAULT_PLAN); x.weekPlan[dow] = next; });
+    toast("Weekly schedule", DOW[dow] + " is now " + TYPES[next] + " by default.");
+  }
+
+  function setDayType(k, o, dateLabel) {
+    mut((x) => { x.sessions[k] = o; });
+    toast("Day type", dateLabel + " set to " + TYPES[o] + " — meals recomputed.");
+  }
+
   // Flashcards — Leitner scheduling. A study session is a shuffled queue of
   // card ids; a wrong answer re-inserts the card a few slots further along
   // the same queue (an immediate second try) in addition to resetting its
@@ -388,7 +405,7 @@ export function useLifeOS() {
   const vals = useMemo(
     () => computeVals(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, tab, toasts, selDay, chartDist, ssub, nsub, gsub, tsub, libFilter, scope, skillFilter, timeKind, notif, editingMealId, syncMode, flashDeckId, flashStudy],
+    [data, tab, toasts, selDay, chartDist, ssub, nsub, gsub, tsub, libFilter, scope, skillFilter, timeKind, notif, editingMealId, syncMode, flashDeckId, flashStudy, gridView],
   );
 
   function computeVals() {
@@ -481,6 +498,20 @@ export function useLifeOS() {
         const up = d.goals.filter((g) => !g.done && g.due && g.due >= tk).sort((a, b) => (a.due < b.due ? -1 : 1))[0];
         return up ? up.title + " — " + fmtShort(up.due) : "No deadline ahead";
       })(),
+      notes: {
+        items: (d.quickNotes || []).map((n) => ({
+          key: n.id, text: n.text,
+          remove: () => { mut((x) => { x.quickNotes = (x.quickNotes || []).filter((y) => y.id !== n.id); }); },
+        })),
+        empty: (d.quickNotes || []).length ? "" : "Nothing jotted down — quick things to remember or do go here.",
+        add: (e) => {
+          e.preventDefault();
+          const el = ref("quickNote").current, v2 = el && el.value.trim();
+          if (!v2) return;
+          mut((x) => { x.quickNotes = x.quickNotes || []; x.quickNotes.unshift({ id: "qn" + Date.now(), text: v2 }); });
+          el.value = "";
+        },
+      },
     };
 
     // ---- NUTRITION ----
@@ -500,6 +531,13 @@ export function useLifeOS() {
           st: { flex: "1 1 84px", border: "1px solid " + (on ? "var(--text)" : "var(--line)"), background: on ? "var(--text)" : "transparent", color: on ? "var(--bg)" : "var(--text)", padding: "9px 6px", borderRadius: "99px", cursor: "pointer", fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif", textAlign: "center" },
         };
       }),
+      dayOverride: {
+        options: ["track", "gym", "rest"].map((o) => ({
+          label: TYPES[o],
+          st: chip(sessionType(d, sel) === o, o === "rest" ? "var(--hint)" : o === "gym" ? "var(--red)" : "var(--green)"),
+          pick: () => setDayType(sel, o, fmtLong(parseIso(sel))),
+        })),
+      },
       selLabel: fmtLong(parseIso(sel)) + " · " + selPlan.length + " meals",
       selMeals: selPlan.map((m) => {
         const dayT = dayKind(d, sel);
@@ -791,10 +829,28 @@ export function useLifeOS() {
       scopeTabs: ["daily", "weekly", "monthly", "once"].map((s) => ({ key: s, label: { daily: "Daily", weekly: "Weekly", monthly: "Monthly", once: "One-off" }[s], st: chip(scope === s), pick: () => setScope(s) })),
       showDailyGrid: scope === "daily",
       showWeeklyGrid: scope === "weekly",
-      dailyGrids: (() => {
-        const dailyTasks = d.tasks.filter((t) => t.repeat === "daily");
-        const start = monday(addDays(now, -364));
-        return dailyTasks.map((t) => {
+      // Compact per-task summaries — the full 365-cell grid is big, so it
+      // only renders on its own page (gridView below), opened from here.
+      dailySummaries: d.tasks.filter((t) => t.repeat === "daily").map((t) => {
+        let streakStart = (t.done || {})[tk] ? 0 : 1;
+        let streak = 0;
+        for (let i = streakStart; ; i++) {
+          const k = iso(addDays(now, -i));
+          if ((t.done || {})[k]) streak++; else break;
+        }
+        return {
+          key: t.id, title: t.title,
+          streakTxt: streak ? streak + (streak === 1 ? "-day streak" : "-day streak") : "No streak yet",
+          view: () => setGridView({ kind: "daily", taskId: t.id }),
+        };
+      }),
+      viewWeeklyGrid: () => setGridView({ kind: "weekly" }),
+      gridView: (() => {
+        if (!gridView) return null;
+        if (gridView.kind === "daily") {
+          const t = d.tasks.filter((x) => x.id === gridView.taskId)[0];
+          if (!t) return null;
+          const start = monday(addDays(now, -364));
           const cells = Array.from({ length: 371 }, (_, i) => {
             const date = addDays(start, i);
             const k = iso(date);
@@ -802,10 +858,8 @@ export function useLifeOS() {
             const done = !future && !!(t.done || {})[k];
             return { key: k, future, done, title: future ? "" : fmtShort(k) + " — " + (done ? "done" : "missed") };
           });
-          return { key: t.id, title: t.title, cells, from: fmtShort(iso(start)), to: fmtShort(tk) };
-        });
-      })(),
-      weeklyGrid: (() => {
+          return { kind: "daily", title: t.title, grid: { cells, from: fmtShort(iso(start)), to: fmtShort(tk) }, back: () => setGridView(null) };
+        }
         const weeklyTasks = d.tasks.filter((t) => t.repeat === "weekly");
         const curMon = monday(now);
         const cells = Array.from({ length: 52 }, (_, i) => {
@@ -815,7 +869,7 @@ export function useLifeOS() {
           const pct = !future && weeklyTasks.length ? weeklyTasks.filter((t) => !!(t.done || {})[wk]).length / weeklyTasks.length : 0;
           return { key: wk, future, pct, title: future ? "" : "Week of " + fmtShort(iso(wkStart)) + " — " + (weeklyTasks.length ? Math.round(pct * 100) + "% of weekly tasks" : "no weekly tasks yet") };
         });
-        return { cells, from: fmtShort(iso(addDays(curMon, -51 * 7))), to: fmtShort(iso(curMon)) };
+        return { kind: "weekly", title: "Weekly tasks", grid: { cells, from: fmtShort(iso(addDays(curMon, -51 * 7))), to: fmtShort(iso(curMon)) }, back: () => setGridView(null) };
       })(),
       tasks: d.tasks.filter((t) => t.repeat === scope).map((t) => {
         const done = taskDoneOf(t, now);
@@ -870,6 +924,17 @@ export function useLifeOS() {
         const c = b.status === "Reading" ? "var(--green)" : b.status === "Finished" ? "var(--hint)" : "var(--red)";
         return {
           key: b.id, t: b.title, a: b.author || "—", status: b.status, tag: tag(c), review: b.review || "", ratingTxt: (b.rating || 0) + " / 10",
+          cover: b.cover || null,
+          coverInputRef: ref("cover_" + b.id),
+          pickCover: () => { const el = ref("cover_" + b.id).current; if (el) el.click(); },
+          setCover: (file) => {
+            if (!file) return;
+            resizeImageFile(file, 640, 0.82).then((dataUrl) => {
+              mut((x) => { const q = x.books.filter((y) => y.id === b.id)[0]; if (q) q.cover = dataUrl; });
+              toast("Reading", "Cover added for “" + b.title + "”.");
+            }).catch(() => toast("Reading", "Couldn’t read that image."));
+          },
+          removeCover: () => { mut((x) => { const q = x.books.filter((y) => y.id === b.id)[0]; if (q) q.cover = null; }); },
           stars: Array.from({ length: 10 }, (_, i) => ({
             title: i + 1 + " / 10",
             st: { border: 0, background: "transparent", padding: "0 1px", font: "700 19px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", color: i < (b.rating || 0) ? "var(--red)" : "var(--line)" },
@@ -1025,6 +1090,18 @@ export function useLifeOS() {
           },
         };
       })(),
+    };
+
+    // ---- SETTINGS ----
+    v.settings = {
+      weekPlan: [1, 2, 3, 4, 5, 6, 0].map((dow) => {
+        const cur = (d.weekPlan && d.weekPlan[dow]) || DEFAULT_PLAN[dow];
+        return {
+          key: dow, label: DOW[dow], typeLabel: TYPES[cur],
+          st: tag(cur === "rest" ? "var(--hint)" : cur === "gym" ? "var(--red)" : "var(--green)"),
+          cycle: () => cycleWeekPlanDay(dow),
+        };
+      }),
     };
 
     return v;

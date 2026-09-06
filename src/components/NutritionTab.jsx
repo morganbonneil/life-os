@@ -13,13 +13,20 @@ export default function NutritionTab({ nutri, getRef }) {
 
       {nutri.isDay && (
         <div>
-          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 24 }}>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
             {nutri.days.map((d) => (
               <button key={d.key} onClick={d.pick} style={d.st} className="day-btn">
                 <span className="dow">{d.dow}</span>
                 <span className="num">{d.num}</span>
                 <span className="tag">{d.tag}</span>
               </button>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap", marginBottom: 24 }}>
+            <span className="hint" style={{ margin: 0 }}>This day is:</span>
+            {nutri.dayOverride.options.map((o) => (
+              <button key={o.label} onClick={o.pick} style={o.st}>{o.label}</button>
             ))}
           </div>
 

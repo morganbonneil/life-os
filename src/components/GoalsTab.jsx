@@ -37,7 +37,7 @@ function StreakGrid({ grid, className }) {
 function DailyTaskGrid({ grid }) {
   return (
     <div className="streak-wrap">
-      <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginBottom: 6 }}>{grid.title}</div>
+      {grid.title && <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginBottom: 6 }}>{grid.title}</div>}
       <div className="streak-scroll">
         <div className="streak-grid-daily">
           {grid.cells.map((c) => (
@@ -103,7 +103,21 @@ export default function GoalsTab({ goals, getRef }) {
         </div>
       )}
 
-      {goals.isTodo && (
+      {goals.isTodo && goals.gridView && (
+        <div className="grid grid-wide">
+          <section style={{ gridColumn: "1 / -1" }}>
+            <div className="section-title-row">
+              <button onClick={goals.gridView.back} className="link-btn" style={{ textDecoration: "none" }}>← Back to to-do</button>
+              <span className="count">{goals.gridView.title}</span>
+            </div>
+            {goals.gridView.kind === "daily"
+              ? <DailyTaskGrid grid={goals.gridView.grid} />
+              : <StreakGrid grid={goals.gridView.grid} className="streak-grid-weekly" />}
+          </section>
+        </div>
+      )}
+
+      {goals.isTodo && !goals.gridView && (
         <div className="grid grid-wide">
           <section>
             <div className="section-title-row">
@@ -114,9 +128,22 @@ export default function GoalsTab({ goals, getRef }) {
                 ))}
               </span>
             </div>
-            {goals.showDailyGrid && goals.dailyGrids.map((g) => <DailyTaskGrid key={g.key} grid={g} />)}
-            {goals.showDailyGrid && !goals.dailyGrids.length && <div className="rows-empty">No daily task yet — add one on the right to start a streak grid.</div>}
-            {goals.showWeeklyGrid && <StreakGrid grid={goals.weeklyGrid} className="streak-grid-weekly" />}
+
+            {goals.showDailyGrid && goals.dailySummaries.map((s) => (
+              <div key={s.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--line2)" }}>
+                <span style={{ font: "700 14px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" }}>{s.title}</span>
+                <button onClick={s.view} className="link-btn" style={{ textDecoration: "none", whiteSpace: "nowrap" }}>{s.streakTxt} · Calendar →</button>
+              </div>
+            ))}
+            {goals.showDailyGrid && !goals.dailySummaries.length && <div className="rows-empty">No daily task yet — add one on the right to start a streak.</div>}
+
+            {goals.showWeeklyGrid && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--line2)" }}>
+                <span style={{ font: "700 14px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" }}>Weekly tasks calendar</span>
+                <button onClick={goals.viewWeeklyGrid} className="link-btn" style={{ textDecoration: "none" }}>Calendar →</button>
+              </div>
+            )}
+
             {goals.tasks.map((t) => (
               <div key={t.key} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--line2)" }}>
                 <span onClick={t.toggle} style={t.box}>{t.mark}</span>

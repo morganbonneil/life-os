@@ -4,7 +4,8 @@ import { iso, parseIso } from "./utils";
 // ---------- training / nutrition ----------
 
 export function sessionType(data, k) {
-  return data.sessions[k] || DEFAULT_PLAN[parseIso(k).getDay()];
+  const dow = parseIso(k).getDay();
+  return data.sessions[k] || (data.weekPlan && data.weekPlan[dow]) || DEFAULT_PLAN[dow];
 }
 export function isTraining(data, k) {
   return sessionType(data, k) !== "rest";

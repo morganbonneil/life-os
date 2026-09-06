@@ -71,6 +71,21 @@ export default function TodayTab({ today, getRef }) {
             <div style={{ font: "700 12.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--green-mid)", textDecoration: "underline", marginTop: 14 }}>Open in Reading →</div>
           </div>
         </section>
+
+        <section>
+          <div className="section-title green">Quick notes</div>
+          <form className="inline-form" onSubmit={today.notes.add}>
+            <input ref={getRef("quickNote")} placeholder="Don’t forget to…" />
+            <button type="submit" className="btn btn-small">Add</button>
+          </form>
+          {today.notes.items.map((n) => (
+            <div key={n.key} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", borderBottom: "1px solid var(--line2)" }}>
+              <span onClick={n.remove} title="Done — clear it" style={{ flex: "none", width: 17, height: 17, marginTop: 2, borderRadius: 9, border: "1px solid var(--input-line)", cursor: "pointer" }} />
+              <span style={{ flex: 1, minWidth: 0, font: "700 14px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", whiteSpace: "pre-wrap" }}>{n.text}</span>
+            </div>
+          ))}
+          <div className="rows-empty">{today.notes.empty}</div>
+        </section>
       </div>
     </div>
   );

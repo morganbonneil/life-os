@@ -73,3 +73,27 @@ export function normDist(raw) {
   if (!n) return "";
   return n + " " + (/km/i.test(s) ? "km" : "m");
 }
+
+// Downscales an uploaded photo (book cover scans, etc.) to a JPEG data URL
+// before it goes into localStorage — an unscaled phone photo would eat the
+// whole per-origin quota after just a handful of books.
+export function resizeImageFile(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read the file."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Could not read that image."));
+      img.onload = () => {
+        const scale = Math.min(1, (maxDim || 640) / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality || 0.82));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}

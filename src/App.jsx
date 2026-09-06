@@ -39,6 +39,7 @@ export default function App() {
             resetDemo={resetDemo}
             syncMode={syncMode}
             push={push}
+            settings={vals.settings}
           />
         )}
 

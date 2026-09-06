@@ -8,7 +8,7 @@ const THEME_OPTIONS = [
 
 export default function SettingsTab({
   themePref, setThemePref, exportData, importData, resetDemo, syncMode,
-  push,
+  push, settings,
 }) {
   const fileInput = useRef(null);
 
@@ -31,6 +31,16 @@ export default function SettingsTab({
             ))}
           </div>
           <div className="hint">“System” follows your phone or browser’s own light/dark setting.</div>
+        </section>
+
+        <section>
+          <div className="section-title red">Weekly training schedule</div>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 16 }}>
+            {settings?.weekPlan?.map((d) => (
+              <button key={d.key} onClick={d.cycle} style={d.st}>{d.label} · {d.typeLabel}</button>
+            ))}
+          </div>
+          <div className="hint">The default for each weekday — tap one to cycle Track → Gym → Rest. This decides which meals show up on Nutrition, unless a specific date is overridden there.</div>
         </section>
 
         <section>

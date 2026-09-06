@@ -18,17 +18,39 @@ export default function TrackingTab({ track, getRef }) {
             </div>
             {track.books.map((b) => (
               <div key={b.key} style={{ padding: "16px 0", borderBottom: "1px solid var(--line2)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                  <span style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif" }}>{b.t}</span>
-                  <button onClick={b.cycle} style={b.tag}>{b.status}</button>
-                  <button onClick={b.remove} title="Delete" className="btn-x">✕</button>
-                </div>
-                <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{b.a}</div>
-                <div style={{ display: "flex", gap: 2, alignItems: "center", marginTop: 9, flexWrap: "wrap" }}>
-                  {b.stars.map((s, i) => (
-                    <button key={i} onClick={s.pick} title={s.title} style={s.st}>★</button>
-                  ))}
-                  <span style={{ font: "700 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginLeft: 8, whiteSpace: "nowrap" }}>{b.ratingTxt}</span>
+                <div style={{ display: "flex", gap: 12 }}>
+                  {b.cover ? (
+                    <img
+                      src={b.cover} alt="" onClick={b.pickCover}
+                      style={{ width: 56, height: 84, flex: "none", objectFit: "cover", borderRadius: 8, boxShadow: "0 4px 12px var(--shadow)", cursor: "pointer" }}
+                    />
+                  ) : (
+                    <div
+                      onClick={b.pickCover} title="Add a cover photo"
+                      style={{ width: 56, height: 84, flex: "none", borderRadius: 8, border: "1px dashed var(--input-line)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", font: "700 10.5px/1.2 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", textAlign: "center", padding: 4 }}
+                    >
+                      + cover
+                    </div>
+                  )}
+                  <input
+                    ref={b.coverInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={(e) => { const f = e.target.files && e.target.files[0]; b.setCover(f); e.target.value = ""; }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+                      <span style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif" }}>{b.t}</span>
+                      <button onClick={b.cycle} style={b.tag}>{b.status}</button>
+                      <button onClick={b.remove} title="Delete" className="btn-x">✕</button>
+                    </div>
+                    <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{b.a}</div>
+                    <div style={{ display: "flex", gap: 2, alignItems: "center", marginTop: 9, flexWrap: "wrap" }}>
+                      {b.stars.map((s, i) => (
+                        <button key={i} onClick={s.pick} title={s.title} style={s.st}>★</button>
+                      ))}
+                      <span style={{ font: "700 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginLeft: 8, whiteSpace: "nowrap" }}>{b.ratingTxt}</span>
+                    </div>
+                    {b.cover && <button onClick={b.removeCover} className="link-btn" style={{ textDecoration: "none", marginTop: 8, fontSize: 11.5 }}>Remove cover</button>}
+                  </div>
                 </div>
                 <form onSubmit={b.saveReview} style={{ marginTop: 11 }}>
                   <textarea ref={b.refReview} rows={3} defaultValue={b.review} placeholder="What you thought of it…" style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 9, font: "700 14px/1.55 'Plus Jakarta Sans',system-ui,sans-serif", resize: "vertical" }} />
