@@ -30,11 +30,16 @@ export default function NutritionTab({ nutri, getRef }) {
                 <div key={m.key} className="row-line">
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
                     <span style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--hint)" }}>{m.slot} · {m.time}</span>
-                    <button onClick={m.swap} className="btn btn-green-outline" style={{ padding: "5px 9px", fontSize: 12 }}>Swap</button>
                   </div>
                   <div style={{ font: "700 16px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", marginTop: 6 }}>{m.title}</div>
                   <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 4 }}>{m.macros}</div>
                   <div style={{ font: "700 12.5px/1.5 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 3 }}>{m.ingLine}</div>
+                  <div style={{ marginTop: 9 }}>
+                    <label className="field-label">Choose this meal for every {m.dayTypeLabel}</label>
+                    <select value={m.chooseValue} onChange={(e) => m.choose(e.target.value)} className="ln" style={{ marginTop: 4 }}>
+                      {m.chooseOptions.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                    </select>
+                  </div>
                 </div>
               ))}
             </section>

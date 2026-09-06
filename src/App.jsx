@@ -10,8 +10,8 @@ import TrackingTab from "./components/TrackingTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
 
 export default function App() {
-  const { vals, ref, exportData, importData, resetDemo, syncMode, themePref, setThemePref, hydrationSlots } = useLifeOS();
-  const push = usePush(hydrationSlots);
+  const { vals, ref, exportData, importData, resetDemo, syncMode, themePref, setThemePref, hydrationSlots, onceTasks } = useLifeOS();
+  const push = usePush(hydrationSlots, onceTasks);
 
   return (
     <div className="app">

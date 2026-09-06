@@ -14,7 +14,7 @@ export default async (req) => {
     return new Response("Bad JSON", { status: 400 });
   }
 
-  const { deviceId, subscription, tz, hydrationSlots, weeklyDigest } = body || {};
+  const { deviceId, subscription, tz, hydrationSlots, onceTasks, weeklyDigest } = body || {};
   if (!deviceId || !subscription || !subscription.endpoint) {
     return new Response("Missing deviceId or subscription", { status: 400 });
   }
@@ -25,6 +25,9 @@ export default async (req) => {
     subscription,
     tz: typeof tz === "string" && tz ? tz : "UTC",
     hydrationSlots: Array.isArray(hydrationSlots) ? hydrationSlots.filter((s) => typeof s === "string") : [],
+    onceTasks: Array.isArray(onceTasks)
+      ? onceTasks.filter((t) => t && typeof t.id === "string" && typeof t.title === "string" && typeof t.date === "string")
+      : [],
     weeklyDigest: !!weeklyDigest,
     sent: existing.sent || {},
     updatedAt: new Date().toISOString(),

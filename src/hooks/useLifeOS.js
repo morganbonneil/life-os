@@ -3,8 +3,8 @@ import {
   CATS, DOMAINS, DOW, RECOV, RECOV_DEFAULT, REPEATS, SLOTS, STORAGE_KEY, TYPES, UNIT_STEP,
 } from "../lib/constants";
 import {
-  bar, box, chip, goalProgress, ingTxt, macroTxt,
-  mealFor, plan, prose, recOf, recovScore, sessionType, tag, targetsOf, taskLink,
+  bar, box, candidates, chip, dayKind, goalProgress, ingTxt, macroTxt,
+  plan, prose, recOf, recovScore, sessionType, tag, targetsOf, taskLink,
 } from "../lib/logic";
 import { buildMeals, buildSeed } from "../lib/seed";
 import {
@@ -279,24 +279,28 @@ export function useLifeOS() {
     return "once";
   }
 
-  function toggleTask(id, from) {
+  function toggleTaskForDate(id, date, from) {
     let after = false, title = "";
     mut((d) => {
       const t = d.tasks.filter((x) => x.id === id)[0];
       if (!t) return;
       t.done = t.done || {};
-      const k = taskKeyOf(t, now);
+      const k = taskKeyOf(t, date);
       t.done[k] = !t.done[k];
       after = t.done[k];
       title = t.title;
     });
-    if (title) toast(from === "today" ? "Synced" : "To-do", after ? "“" + title + "” ticked — updated in " + (from === "today" ? "Goals" : "Today") + "." : "“" + title + "” reopened.");
+    if (title) toast(from === "today" ? "Synced" : from === "catchup" ? "Yesterday" : "To-do", after ? "“" + title + "” ticked" + (from === "catchup" ? " for yesterday." : " — updated in " + (from === "today" ? "Goals" : "Today") + ".") : "“" + title + "” reopened.");
   }
+  function toggleTask(id, from) { toggleTaskForDate(id, now, from); }
 
-  function swapMeal(d, k, slot) {
-    mut((x) => { x.picks[k + "|" + slot] = (x.picks[k + "|" + slot] || 0) + 1 + Math.floor(Math.random() * 3); });
-    const m2 = mealFor(d, k, slot, hash);
-    toast("Rotation", m2 ? slot + " → " + m2.name : "No meal available for this slot.");
+  function chooseMeal(dayT, slot, mealId, mealName) {
+    mut((x) => {
+      x.mealChoice = x.mealChoice || {};
+      const key = dayT + "|" + slot;
+      if (mealId) x.mealChoice[key] = mealId; else delete x.mealChoice[key];
+    });
+    toast("Meal", mealId ? slot + " set to “" + mealName + "” for every " + (dayT === "training" ? "training" : "rest") + " day." : slot + " back to automatic rotation.");
   }
 
   function shopAgg(d) {
@@ -355,6 +359,9 @@ export function useLifeOS() {
     };
 
     // ---- TODAY ----
+    const yesterday = addDays(now, -1);
+    const yKey = iso(yesterday);
+    const yesterdayOpen = d.tasks.filter((t) => t.repeat === "daily" && !taskDoneOf(t, yesterday));
     const todayLearning = d.learnings.filter((l) => l.date === tk)[0];
     const curBook = d.books.filter((b) => b.status === "Reading")[0] || d.books.filter((b) => b.status === "To read")[0] || d.books[0];
     const checkinText = (() => {
@@ -393,6 +400,12 @@ export function useLifeOS() {
         const done = taskDoneOf(t, now);
         return { id: t.id, title: t.title, link: taskLink(d, t, fmtShort), box: box(done), mark: done ? "✓" : "", name: strikeStyle(done), toggle: () => toggleTask(t.id, "today") };
       }),
+      yesterday: {
+        date: fmtShort(yKey),
+        tasks: yesterdayOpen.map((t) => ({
+          id: t.id, title: t.title, box: box(false), toggle: () => toggleTaskForDate(t.id, yesterday, "catchup"),
+        })),
+      },
       addTask: (e) => {
         e.preventDefault();
         const el = ref("todayTask").current, v2 = el && el.value.trim();
@@ -430,7 +443,18 @@ export function useLifeOS() {
         };
       }),
       selLabel: fmtLong(parseIso(sel)) + " · " + selPlan.length + " meals",
-      selMeals: selPlan.map((m) => ({ key: m.slot, slot: m.slot, time: m.time, title: m.m.name, macros: macroTxt(m.m), ingLine: ingTxt(m.m), swap: () => swapMeal(d, sel, m.slot) })),
+      selMeals: selPlan.map((m) => {
+        const dayT = dayKind(d, sel);
+        const cand = candidates(d, sel, m.slot);
+        const chosenId = (d.mealChoice && d.mealChoice[dayT + "|" + m.slot]) || "";
+        return {
+          key: m.slot, slot: m.slot, time: m.time, title: m.m.name, macros: macroTxt(m.m), ingLine: ingTxt(m.m),
+          dayTypeLabel: dayT === "training" ? "training days" : "rest days",
+          chooseValue: chosenId,
+          chooseOptions: [{ v: "", l: "Automatic (rotates)" }].concat(cand.map((c) => ({ v: c.id, l: c.name }))),
+          choose: (id) => { const picked = cand.filter((c) => c.id === id)[0]; chooseMeal(dayT, m.slot, id || null, picked ? picked.name : ""); },
+        };
+      }),
       totals: [
         { label: "Kcal", val: selTotals.k },
         { label: "Protein", val: selTotals.p + " g" },
@@ -709,17 +733,19 @@ export function useLifeOS() {
       scopeTabs: ["daily", "weekly", "monthly", "once"].map((s) => ({ key: s, label: { daily: "Daily", weekly: "Weekly", monthly: "Monthly", once: "One-off" }[s], st: chip(scope === s), pick: () => setScope(s) })),
       showDailyGrid: scope === "daily",
       showWeeklyGrid: scope === "weekly",
-      dailyGrid: (() => {
+      dailyGrids: (() => {
         const dailyTasks = d.tasks.filter((t) => t.repeat === "daily");
         const start = monday(addDays(now, -364));
-        const cells = Array.from({ length: 371 }, (_, i) => {
-          const date = addDays(start, i);
-          const k = iso(date);
-          const future = date > now;
-          const pct = !future && dailyTasks.length ? dailyTasks.filter((t) => !!(t.done || {})[k]).length / dailyTasks.length : 0;
-          return { key: k, future, pct, title: future ? "" : fmtShort(k) + " — " + (dailyTasks.length ? Math.round(pct * 100) + "% of daily tasks" : "no daily tasks yet") };
+        return dailyTasks.map((t) => {
+          const cells = Array.from({ length: 371 }, (_, i) => {
+            const date = addDays(start, i);
+            const k = iso(date);
+            const future = date > now;
+            const done = !future && !!(t.done || {})[k];
+            return { key: k, future, done, title: future ? "" : fmtShort(k) + " — " + (done ? "done" : "missed") };
+          });
+          return { key: t.id, title: t.title, cells, from: fmtShort(iso(start)), to: fmtShort(tk) };
         });
-        return { cells, from: fmtShort(iso(start)), to: fmtShort(tk) };
       })(),
       weeklyGrid: (() => {
         const weeklyTasks = d.tasks.filter((t) => t.repeat === "weekly");
@@ -933,6 +959,7 @@ export function useLifeOS() {
   return {
     vals, ref, syncMode, exportData, importData, themePref, setThemePref,
     hydrationSlots: data.hydra.slots,
+    onceTasks: data.tasks.filter((t) => t.repeat === "once" && !taskDoneOf(t, now)).map((t) => ({ id: t.id, title: t.title, date: t.date || tk })),
     resetDemo: () => {
       const s = buildSeed(HYDRATION_TARGET_L);
       dataRef.current = s;

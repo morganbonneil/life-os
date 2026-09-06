@@ -68,6 +68,22 @@ export default async () => {
       }
     }
 
+    // One-off to-dos: a single reminder at 08:00 local time on their due
+    // date, skipped once fired (dedup key is the task id, which never
+    // recurs since these tasks don't repeat) or once the client stops
+    // resending it (meaning it was ticked off or deleted).
+    if (!gone) {
+      for (const t of entry.onceTasks || []) {
+        const sentKey = "once:" + t.id;
+        if (entry.sent[sentKey]) continue;
+        if (t.date === dateKey && withinWindow("08:00", hm, 5)) {
+          const result = await sendPush(entry.subscription, "To-do today · Life OS", t.title);
+          if (result === "gone") { gone = true; break; }
+          if (result) { entry.sent[sentKey] = true; changed = true; }
+        }
+      }
+    }
+
     if (!gone && entry.weeklyDigest && dow === "Sun" && withinWindow("20:00", hm, 5)) {
       const wkKey = "digest:" + dateKey;
       if (entry.sent.digest !== wkKey) {

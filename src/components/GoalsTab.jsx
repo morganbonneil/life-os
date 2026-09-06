@@ -32,6 +32,34 @@ function StreakGrid({ grid, className }) {
   );
 }
 
+// One 365-day grid per daily task: filled = done, light tint = missed (past
+// and still open), dashed outline = not reached yet.
+function DailyTaskGrid({ grid }) {
+  return (
+    <div className="streak-wrap">
+      <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginBottom: 6 }}>{grid.title}</div>
+      <div className="streak-scroll">
+        <div className="streak-grid-daily">
+          {grid.cells.map((c) => (
+            <div
+              key={c.key}
+              title={c.title}
+              className={"streak-cell" + (c.future ? " future" : c.done ? "" : " missed")}
+              style={c.future ? undefined : { background: c.done ? "var(--green)" : undefined }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="streak-legend">
+        <span>{grid.from}</span>
+        <div className="streak-cell" style={{ background: "var(--green)" }} /><span>done</span>
+        <div className="streak-cell missed" /><span>missed</span>
+        <span>{grid.to}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function GoalsTab({ goals, getRef }) {
   return (
     <div>
@@ -86,7 +114,8 @@ export default function GoalsTab({ goals, getRef }) {
                 ))}
               </span>
             </div>
-            {goals.showDailyGrid && <StreakGrid grid={goals.dailyGrid} className="streak-grid-daily" />}
+            {goals.showDailyGrid && goals.dailyGrids.map((g) => <DailyTaskGrid key={g.key} grid={g} />)}
+            {goals.showDailyGrid && !goals.dailyGrids.length && <div className="rows-empty">No daily task yet — add one on the right to start a streak grid.</div>}
             {goals.showWeeklyGrid && <StreakGrid grid={goals.weeklyGrid} className="streak-grid-weekly" />}
             {goals.tasks.map((t) => (
               <div key={t.key} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--line2)" }}>

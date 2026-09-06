@@ -184,6 +184,7 @@ input, select, textarea, button {
 }
 .streak-cell { width: 10px; height: 10px; border-radius: 2px; border: 1px solid var(--line2); }
 .streak-cell.future { border: 1px dashed var(--line2); background: transparent !important; }
+.streak-cell.missed { background: var(--green-tint-bg); }
 .streak-legend {
   display: flex; align-items: center; gap: 5px; margin-top: 8px;
   font: 700 11px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint);

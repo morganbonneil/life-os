@@ -22,6 +22,11 @@ export function candidates(data, k, slot) {
 export function mealFor(data, k, slot, hashFn) {
   const cand = candidates(data, k, slot);
   if (!cand.length) return null;
+  const chosenId = data.mealChoice && data.mealChoice[dayKind(data, k) + "|" + slot];
+  if (chosenId) {
+    const chosen = cand.filter((m) => m.id === chosenId)[0];
+    if (chosen) return chosen;
+  }
   const bump = data.picks[k + "|" + slot] || 0;
   return cand[hashFn(k + "|" + slot + "#" + bump) % cand.length];
 }

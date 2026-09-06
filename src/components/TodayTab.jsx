@@ -19,6 +19,18 @@ export default function TodayTab({ today, getRef }) {
             <input ref={getRef("todayTask")} placeholder="Add a task for today…" />
             <button type="submit" className="btn btn-small">Add</button>
           </form>
+
+          {today.yesterday.tasks.length > 0 && (
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--line2)" }}>
+              <div style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--hint)" }}>Didn’t get to it? · {today.yesterday.date}</div>
+              {today.yesterday.tasks.map((t) => (
+                <div key={t.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", cursor: "pointer" }} onClick={t.toggle}>
+                  <span style={t.box} />
+                  <span style={{ flex: 1, minWidth: 0, font: "700 14px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" }}>{t.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section>

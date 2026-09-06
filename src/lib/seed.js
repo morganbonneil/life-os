@@ -106,7 +106,7 @@ export function buildSeed(hydrationTargetL) {
     weeklyDigest: { fired: {} },
     startWeek: iso(mon),
     hydra: { targetL: hydrationTargetL ?? 3, slots: ["07:30", "10:00", "12:30", "15:00", "17:30", "20:00"], done: {}, glasses: {}, fired: {} },
-    sessions, meals, picks: {}, mealsDone: {}, shopExtra: [], shopQty: {}, shopHidden: {}, bought: {},
+    sessions, meals, picks: {}, mealChoice: {}, mealsDone: {}, shopExtra: [], shopQty: {}, shopHidden: {}, bought: {},
     times, recovery,
     targets: [
       { id: "o1", dist: "100 m", t: 11.2, due: "2026-12-25", label: "Christmas" },
