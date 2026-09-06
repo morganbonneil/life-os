@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 // Public VAPID key — safe to ship in client code (it's the "who this push
 // belongs to" identity, not a secret). The matching private key lives only
 // in the Netlify Function's environment variables.
-const VAPID_PUBLIC_KEY = "BMKaHexrv1h_1KYj5uyL_q6Y38WNVl4g47kBC2iV7G0bdVtFPb6Uh4G97zRVBOml1jaK8RPANPijXdi4zWs9_h8";
+const VAPID_PUBLIC_KEY = "BLwXqAWhnFEnkQ5RMolKXXx55YmDcDhf86JC6Uxv2t-tAPnpmT4P5ukj5wKK7iapu5MFvG0qdZYeHq7C0UQ0cgI";
 const DEVICE_ID_KEY = "oslife.deviceId";
 
 function urlBase64ToUint8Array(base64String) {
