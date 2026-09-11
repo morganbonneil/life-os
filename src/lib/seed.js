@@ -123,7 +123,7 @@ export function buildSeed(hydrationTargetL) {
     hydra: { targetL: hydrationTargetL ?? 3, slots: ["07:30", "10:00", "12:30", "15:00", "17:30", "20:00"], done: {}, glasses: {}, fired: {} },
     sessions, weekPlan: Object.assign({}, DEFAULT_PLAN), meals, picks: {}, mealChoice: {}, mealsDone: {}, shopExtra: [], shopQty: {}, shopHidden: {}, bought: {},
     quickNotes: [],
-    flashDecks: [{ id: "fd1", name: "Spanish — Essentials" }],
+    flashDecks: [{ id: "fd1", name: "Essentials", language: "Spanish" }],
     flashCards: buildFlashcards(),
     times, recovery,
     targets: [
@@ -143,7 +143,7 @@ export function buildSeed(hydrationTargetL) {
       { id: "g9", domain: "freedom", title: "Three weeks abroad, self-funded", due: "2027-08-31", done: false },
     ],
     tasks: [
-      { id: "t1", title: "30 min of Spanish", goal: "g5", repeat: "daily", date: tk, done: {} },
+      { id: "t1", title: "Spanish practice", goal: "g5", repeat: "daily", date: tk, done: {}, timeTarget: 40, timeLog: {} },
       { id: "t2", title: "Ten minutes of mobility", goal: "g6", repeat: "daily", date: tk, done: {} },
       { id: "t3", title: "Write 300 words", goal: "g8", repeat: "daily", date: tk, done: {} },
       { id: "t4", title: "Gym session — squat 5×5", goal: "g1", repeat: "once", date: tk, done: {} },
@@ -169,9 +169,9 @@ export function buildSeed(hydrationTargetL) {
       { id: "sk4", name: "Sports massage self-care", note: "For calves and hamstrings between track days.", status: "planned", date: iso(addDays(today, 26)) },
     ],
     learnings: [
-      { id: "l1", date: iso(addDays(today, -1)), text: "Ground contact time matters more than stride length at top speed — cueing “push the ground away” beats reaching." },
-      { id: "l2", date: iso(addDays(today, -2)), text: "Writing the shopping list straight from the meal plan removes about twenty minutes of decision-making a week." },
-      { id: "l3", date: iso(addDays(today, -4)), text: "When I sleep under six hours, my technique score drops before my fatigue score does. Sleep is the leading indicator." },
+      { id: "l1", date: iso(addDays(today, -1)), title: "Push the ground away", text: "Ground contact time matters more than stride length at top speed — cueing “push the ground away” beats reaching." },
+      { id: "l2", date: iso(addDays(today, -2)), title: "Shopping list from the meal plan", text: "Writing the shopping list straight from the meal plan removes about twenty minutes of decision-making a week." },
+      { id: "l3", date: iso(addDays(today, -4)), title: "Sleep is the leading indicator", text: "When I sleep under six hours, my technique score drops before my fatigue score does. Sleep is the leading indicator." },
     ],
   };
 }

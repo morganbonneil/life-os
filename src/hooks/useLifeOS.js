@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CATS, DEFAULT_PLAN, DOMAINS, DOW, FLASH_BOX_MAX, FLASH_INTERVALS_DAYS, RECOV, RECOV_DEFAULT, REPEATS, SLOTS, STORAGE_KEY, TYPES, UNIT_STEP,
+  pieceWeightFor,
 } from "../lib/constants";
 import {
   bar, box, candidates, chip, dayKind, goalProgress, ingTxt, macroTxt,
@@ -34,9 +35,24 @@ function migrateMeals(d) {
 // presence rather than a version number.
 function migrateFlashcards(d) {
   if (d.flashDecks) return false;
-  d.flashDecks = [{ id: "fd1", name: "Spanish — Essentials" }];
+  d.flashDecks = [{ id: "fd1", name: "Essentials", language: "Spanish" }];
   d.flashCards = buildFlashcards();
   return true;
+}
+
+// One-time backfill for anyone whose decks predate the language field —
+// derives a language from the old "Language — Deck" naming convention.
+function migrateDeckLanguages(d) {
+  if (!d.flashDecks || !d.flashDecks.length) return false;
+  let changed = false;
+  d.flashDecks.forEach((dk) => {
+    if (dk.language) return;
+    const parts = String(dk.name || "").split("—");
+    dk.language = parts.length > 1 ? parts[0].trim() : dk.name || "Other";
+    if (parts.length > 1) dk.name = parts.slice(1).join("—").trim() || "Essentials";
+    changed = true;
+  });
+  return changed;
 }
 
 function loadOrSeed() {
@@ -47,7 +63,8 @@ function loadOrSeed() {
       if (d && d.version === 4) {
         const mealsChanged = migrateMeals(d);
         const flashChanged = migrateFlashcards(d);
-        if (mealsChanged || flashChanged) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch { /* ignore */ } }
+        const langChanged = migrateDeckLanguages(d);
+        if (mealsChanged || flashChanged || langChanged) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch { /* ignore */ } }
         return d;
       }
     }
@@ -78,9 +95,14 @@ export function useLifeOS() {
   const [skillFilter, setSkillFilter] = useState("All");
   const [timeKind, setTimeKind] = useState("test");
   const [editingMealId, setEditingMealId] = useState(null);
+  const [flashLanguage, setFlashLanguage] = useState(null);
   const [flashDeckId, setFlashDeckId] = useState(null);
-  const [flashStudy, setFlashStudy] = useState(null); // { deckId, queue: [cardId,...], pos, flipped, correct, seen }
+  const [flashStudy, setFlashStudy] = useState(null); // { deckId, phase, queue: [cardId,...], pos, flipped, known: [id,...], unknown: [id,...] }
   const [gridView, setGridView] = useState(null); // { kind: "daily", taskId } | { kind: "weekly" } | null
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [horizonDomain, setHorizonDomain] = useState(null);
+  const [openBookId, setOpenBookId] = useState(null);
+  const [openLearningId, setOpenLearningId] = useState(null);
   const [themePref, setThemePrefState] = useState(() => {
     try { return localStorage.getItem(THEME_KEY) || "system"; } catch { return "system"; }
   });
@@ -239,8 +261,9 @@ export function useLifeOS() {
             if (remote && remote.version === 4) {
               const mealsChanged = migrateMeals(remote);
               const flashChanged = migrateFlashcards(remote);
+              const langChanged = migrateDeckLanguages(remote);
               applyRemote(remote);
-              if (mealsChanged || flashChanged) docRef.set(remote).catch(() => {});
+              if (mealsChanged || flashChanged || langChanged) docRef.set(remote).catch(() => {});
             }
           } else {
             docRef.set(dataRef.current).catch(() => {});
@@ -335,26 +358,29 @@ export function useLifeOS() {
     toast("Day type", dateLabel + " set to " + TYPES[o] + " — meals recomputed.");
   }
 
-  // Flashcards — Leitner scheduling. A study session is a shuffled queue of
-  // card ids; a wrong answer re-inserts the card a few slots further along
-  // the same queue (an immediate second try) in addition to resetting its
-  // box, so a missed card gets drilled again before the session ends.
-  function startStudy(deckId, onlyDue) {
-    const t = iso(new Date());
-    const cards = (dataRef.current.flashCards || []).filter((c) => c.deckId === deckId && (!onlyDue || c.due <= t));
-    if (!cards.length) { toast("Flashcards", onlyDue ? "Nothing due in this deck right now." : "This deck has no cards yet."); return; }
-    const ids = cards.map((c) => c.id);
+  // Flashcards — Leitner scheduling in two phases: a straight first pass
+  // through the queue with no immediate repeats (a wrong answer just files
+  // the card as "unknown" and the session moves on), then optional review
+  // rounds over just the unknown pile or just the known pile, either of
+  // which can flip a card's bucket. The 5-box interval scheduling itself
+  // (startStudy/scoreCard) is unchanged — only the session flow around it.
+  function shuffleIds(arr) {
+    const ids = arr.slice();
     for (let i = ids.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       const tmp = ids[i]; ids[i] = ids[j]; ids[j] = tmp;
     }
-    setFlashStudy({ deckId, queue: ids, pos: 0, flipped: false, correct: 0, seen: 0 });
+    return ids;
   }
 
-  function answerCard(good) {
-    const s = flashStudy;
-    if (!s) return;
-    const cardId = s.queue[s.pos];
+  function startStudy(deckId, onlyDue) {
+    const t = iso(new Date());
+    const cards = (dataRef.current.flashCards || []).filter((c) => c.deckId === deckId && (!onlyDue || c.due <= t));
+    if (!cards.length) { toast("Flashcards", onlyDue ? "Nothing due in this deck right now." : "This deck has no cards yet."); return; }
+    setFlashStudy({ deckId, phase: "pass", queue: shuffleIds(cards.map((c) => c.id)), pos: 0, flipped: false, known: [], unknown: [] });
+  }
+
+  function scoreCard(cardId, good) {
     mut((x) => {
       const c = (x.flashCards || []).filter((y) => y.id === cardId)[0];
       if (!c) return;
@@ -366,16 +392,53 @@ export function useLifeOS() {
         c.due = iso(addDays(new Date(), 1));
       }
     });
-    let queue = s.queue;
-    if (!good) { queue = queue.slice(); queue.splice(Math.min(queue.length, s.pos + 3), 0, cardId); }
+  }
+
+  function answerCard(good) {
+    const s = flashStudy;
+    if (!s) return;
+    const cardId = s.queue[s.pos];
+    scoreCard(cardId, good);
+    const known = good ? s.known.concat([cardId]) : s.known.filter((id) => id !== cardId);
+    const unknown = good ? s.unknown.filter((id) => id !== cardId) : s.unknown.concat([cardId]);
     const nextPos = s.pos + 1;
-    const seen = s.seen + 1, correct = s.correct + (good ? 1 : 0);
-    if (nextPos >= queue.length) {
-      toast("Flashcards", "Session done — " + correct + "/" + seen + " correct.");
-      setFlashStudy(null);
+    if (nextPos >= s.queue.length) {
+      setFlashStudy({ deckId: s.deckId, phase: "summary", queue: [], pos: 0, flipped: false, known, unknown });
     } else {
-      setFlashStudy({ deckId: s.deckId, queue, pos: nextPos, flipped: false, correct, seen });
+      setFlashStudy({ deckId: s.deckId, phase: s.phase, queue: s.queue, pos: nextPos, flipped: false, known, unknown });
     }
+  }
+
+  function reviewGroup(which) {
+    const s = flashStudy;
+    if (!s) return;
+    const ids = which === "unknown" ? s.unknown : s.known;
+    if (!ids.length) return;
+    setFlashStudy({ deckId: s.deckId, phase: "review-" + which, queue: shuffleIds(ids), pos: 0, flipped: false, known: s.known, unknown: s.unknown });
+  }
+
+  function endStudy() {
+    const s = flashStudy;
+    if (s) toast("Flashcards", "Session done — " + s.known.length + " known, " + s.unknown.length + " to revisit.");
+    setFlashStudy(null);
+  }
+
+  // Daily to-do time tracking — logging minutes also flips the ordinary
+  // done flag for that day, so streak grids and goal progress keep working
+  // unchanged for time-tracked tasks.
+  function logTaskTime(taskId, dateKey, minutes) {
+    mut((x) => {
+      const t = x.tasks.filter((y) => y.id === taskId)[0];
+      if (!t) return;
+      t.timeLog = t.timeLog || {};
+      if (minutes > 0) t.timeLog[dateKey] = minutes; else delete t.timeLog[dateKey];
+      t.done = t.done || {};
+      t.done[dateKey] = minutes > 0;
+    });
+  }
+
+  function openTaskGrid(taskId) {
+    setTab("goals"); setGsub("todo"); setScope("daily"); setGridView({ kind: "daily", taskId });
   }
 
   function shopAgg(d) {
@@ -405,7 +468,10 @@ export function useLifeOS() {
   const vals = useMemo(
     () => computeVals(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, tab, toasts, selDay, chartDist, ssub, nsub, gsub, tsub, libFilter, scope, skillFilter, timeKind, notif, editingMealId, syncMode, flashDeckId, flashStudy, gridView],
+    [
+      data, tab, toasts, selDay, chartDist, ssub, nsub, gsub, tsub, libFilter, scope, skillFilter, timeKind, notif,
+      editingMealId, syncMode, flashLanguage, flashDeckId, flashStudy, gridView, weekOffset, horizonDomain, openBookId, openLearningId,
+    ],
   );
 
   function computeVals() {
@@ -417,6 +483,8 @@ export function useLifeOS() {
     const glassCount = Math.round(d.hydra.targetL / 0.25);
     const glassesDone = d.hydra.glasses[tk] || 0;
     const weekDays = Array.from({ length: 7 }, (_, i) => iso(addDays(mon, i)));
+    const navMon = addDays(mon, weekOffset * 7);
+    const navWeekDays = Array.from({ length: 7 }, (_, i) => iso(addDays(navMon, i)));
     const todayTasks = d.tasks.filter((t) => t.repeat === "daily" || (t.repeat === "once" && t.date === tk));
     const openTasks = todayTasks.filter((t) => !taskDoneOf(t, now)).length;
 
@@ -473,7 +541,15 @@ export function useLifeOS() {
       recovLabel, scoreTxt: recScore === null ? "—" : recScore.toFixed(1),
       tasks: todayTasks.map((t) => {
         const done = taskDoneOf(t, now);
-        return { id: t.id, title: t.title, link: taskLink(d, t, fmtShort), box: box(done), mark: done ? "✓" : "", name: strikeStyle(done), toggle: () => toggleTask(t.id, "today") };
+        const isDaily = t.repeat === "daily";
+        const isTimed = !!(isDaily && t.timeTarget);
+        return {
+          id: t.id, title: t.title, link: taskLink(d, t, fmtShort), box: box(done), mark: done ? "✓" : "", name: strikeStyle(done),
+          toggle: () => toggleTask(t.id, "today"),
+          openGrid: isDaily ? () => openTaskGrid(t.id) : null,
+          isTimed, timeTarget: t.timeTarget || 0, minutesToday: isTimed ? ((t.timeLog || {})[tk] || 0) : 0,
+          logMinutes: isTimed ? (mins) => logTaskTime(t.id, tk, mins) : null,
+        };
       }),
       yesterday: {
         date: fmtShort(yKey),
@@ -523,7 +599,14 @@ export function useLifeOS() {
     v.nutri = {
       subs: [["day", "Day"], ["meals", "Meals"], ["groceries", "Groceries"], ["hydration", "Hydration"]].map((s) => ({ key: s[0], label: s[1], st: chip(nsub === s[0]), pick: () => setNsub(s[0]) })),
       isDay: nsub === "day", isLib: nsub === "meals", isShop: nsub === "groceries", isHydra: nsub === "hydration",
-      days: weekDays.map((k) => {
+      weekNav: {
+        label: weekOffset === 0 ? "This week" : (weekOffset > 0 ? "+" + weekOffset + " week" + (weekOffset > 1 ? "s" : "") : weekOffset + " week" + (weekOffset < -1 ? "s" : "")),
+        isThisWeek: weekOffset === 0,
+        prev: () => { setWeekOffset(weekOffset - 1); setSelDay(iso(addDays(navMon, -7))); },
+        next: () => { setWeekOffset(weekOffset + 1); setSelDay(iso(addDays(navMon, 7))); },
+        today: () => { setWeekOffset(0); setSelDay(tk); },
+      },
+      days: navWeekDays.map((k) => {
         const dd = parseIso(k), t = sessionType(d, k), on = k === sel;
         return {
           key: k, dow: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dd.getDay()], num: dd.getDate(), tag: t === "rest" ? "rest" : "training",
@@ -611,8 +694,10 @@ export function useLifeOS() {
       shop: CATS.map((c) => ({
         cat: c, items: shopItems.filter((i) => i.c === c).sort((a, b) => (a.n < b.n ? -1 : 1)).map((i) => {
           const bought = !!d.bought[i.key];
+          const pieceG = i.c === "Produce" && i.u === "g" ? pieceWeightFor(i.n) : null;
+          const qLabel = pieceG ? Math.max(1, Math.round(i.q / pieceG)) + " pc" : Math.round(i.q * 10) / 10 + (i.u ? " " + i.u : "");
           return {
-            key: i.key, n: i.n, q: Math.round(i.q * 10) / 10 + (i.u ? " " + i.u : ""),
+            key: i.key, n: i.n, q: qLabel,
             box: box(bought), mark: bought ? "✓" : "", name: strikeStyle(bought),
             toggle: () => { mut((x) => { x.bought[i.key] = !x.bought[i.key]; }); },
             plus: () => shopSetQty(i, 1), minus: () => shopSetQty(i, -1),
@@ -793,10 +878,7 @@ export function useLifeOS() {
     };
 
     // ---- GOALS ----
-    v.goals = {
-      subs: [["horizons", "Horizons"], ["todo", "To-do"], ["ideas", "Idea box"]].map((s) => ({ key: s[0], label: s[1], st: chip(gsub === s[0]), pick: () => setGsub(s[0]) })),
-      isHorizons: gsub === "horizons", isTodo: gsub === "todo", isIdeas: gsub === "ideas",
-      domains: DOMAINS.map((dm, idx) => {
+    const domainsComputed = DOMAINS.map((dm, idx) => {
         const list = d.goals.filter((g) => g.domain === dm.id);
         const openCount = list.filter((g) => !g.done).length;
         return {
@@ -825,7 +907,15 @@ export function useLifeOS() {
           },
           refTitle: ref("gt_" + dm.id), refDue: ref("gd_" + dm.id),
         };
-      }),
+      });
+
+    v.goals = {
+      subs: [["horizons", "Horizons"], ["todo", "To-do"], ["ideas", "Idea box"]].map((s) => ({ key: s[0], label: s[1], st: chip(gsub === s[0]), pick: () => setGsub(s[0]) })),
+      isHorizons: gsub === "horizons", isTodo: gsub === "todo", isIdeas: gsub === "ideas",
+      horizons: domainsComputed.map((dm) => ({ key: dm.key, name: dm.name, count: dm.count, open: () => setHorizonDomain(dm.key) })),
+      horizonDetail: horizonDomain
+        ? Object.assign({}, domainsComputed.filter((dm) => dm.key === horizonDomain)[0], { back: () => setHorizonDomain(null) })
+        : null,
       scopeTabs: ["daily", "weekly", "monthly", "once"].map((s) => ({ key: s, label: { daily: "Daily", weekly: "Weekly", monthly: "Monthly", once: "One-off" }[s], st: chip(scope === s), pick: () => setScope(s) })),
       showDailyGrid: scope === "daily",
       showWeeklyGrid: scope === "weekly",
@@ -838,9 +928,13 @@ export function useLifeOS() {
           const k = iso(addDays(now, -i));
           if ((t.done || {})[k]) streak++; else break;
         }
+        const isTimed = !!t.timeTarget;
+        const yearTotal = isTimed ? Object.keys(t.timeLog || {}).filter((k) => k.slice(0, 4) === tk.slice(0, 4)).reduce((a, k) => a + t.timeLog[k], 0) : 0;
         return {
           key: t.id, title: t.title,
-          streakTxt: streak ? streak + (streak === 1 ? "-day streak" : "-day streak") : "No streak yet",
+          streakTxt: isTimed
+            ? Math.floor(yearTotal / 60) + "h " + (yearTotal % 60) + "min this year"
+            : (streak ? streak + "-day streak" : "No streak yet"),
           view: () => setGridView({ kind: "daily", taskId: t.id }),
         };
       }),
@@ -858,7 +952,17 @@ export function useLifeOS() {
             const done = !future && !!(t.done || {})[k];
             return { key: k, future, done, title: future ? "" : fmtShort(k) + " — " + (done ? "done" : "missed") };
           });
-          return { kind: "daily", title: t.title, grid: { cells, from: fmtShort(iso(start)), to: fmtShort(tk) }, back: () => setGridView(null) };
+          const isTimed = !!t.timeTarget;
+          const timeLog = t.timeLog || {};
+          const totalMin = Object.keys(timeLog).reduce((a, k) => a + timeLog[k], 0);
+          const yearMin = Object.keys(timeLog).filter((k) => k.slice(0, 4) === tk.slice(0, 4)).reduce((a, k) => a + timeLog[k], 0);
+          const fmtHM = (m) => Math.floor(m / 60) + "h " + (m % 60) + "min";
+          return {
+            kind: "daily", title: t.title, grid: { cells, from: fmtShort(iso(start)), to: fmtShort(tk) }, back: () => setGridView(null),
+            isTimed, timeTarget: t.timeTarget || 0, todayMinutes: timeLog[tk] || 0,
+            statsLabel: isTimed ? fmtHM(totalMin) + " total · " + fmtHM(yearMin) + " this year" : "",
+            logMinutes: isTimed ? (mins) => logTaskTime(t.id, tk, mins) : null,
+          };
         }
         const weeklyTasks = d.tasks.filter((t) => t.repeat === "weekly");
         const curMon = monday(now);
@@ -873,10 +977,14 @@ export function useLifeOS() {
       })(),
       tasks: d.tasks.filter((t) => t.repeat === scope).map((t) => {
         const done = taskDoneOf(t, now);
+        const isTimed = !!(scope === "daily" && t.timeTarget);
         return {
           key: t.id, title: t.title, link: taskLink(d, t, fmtShort), box: box(done), mark: done ? "✓" : "", name: strikeStyle(done),
           toggle: () => toggleTask(t.id, "goals"),
           remove: () => { mut((x) => { x.tasks = x.tasks.filter((y) => y.id !== t.id); }); },
+          openGrid: scope === "daily" ? () => setGridView({ kind: "daily", taskId: t.id }) : null,
+          isTimed, timeTarget: t.timeTarget || 0, minutesToday: isTimed ? ((t.timeLog || {})[tk] || 0) : 0,
+          logMinutes: isTimed ? (mins) => logTaskTime(t.id, tk, mins) : null,
         };
       }),
       tasksEmpty: d.tasks.filter((t) => t.repeat === scope).length ? "" : "Nothing here yet — add a task on the right.",
@@ -890,8 +998,14 @@ export function useLifeOS() {
         if (!v2) return;
         const repeat = ref("gRepeat").current.value, goal = ref("gGoal").current.value || null;
         const date = repeat === "once" ? ref("gDate").current.value || tk : tk;
-        mut((x) => { x.tasks.push({ id: "t" + Date.now(), title: v2, goal, repeat, date, done: {} }); });
-        ref("gTask").current.value = ""; if (ref("gDate").current) ref("gDate").current.value = "";
+        const timeTargetRaw = ref("gTimeTarget").current && ref("gTimeTarget").current.value;
+        const timeTarget = repeat === "daily" && timeTargetRaw ? Math.max(0, Math.round(+timeTargetRaw)) : 0;
+        mut((x) => {
+          const task = { id: "t" + Date.now(), title: v2, goal, repeat, date, done: {} };
+          if (timeTarget) { task.timeTarget = timeTarget; task.timeLog = {}; }
+          x.tasks.push(task);
+        });
+        ref("gTask").current.value = ""; if (ref("gDate").current) ref("gDate").current.value = ""; if (ref("gTimeTarget").current) ref("gTimeTarget").current.value = "";
         setScope(repeat);
         toast("To-do", repeat === "daily" ? "Added — it will show on Today every day." : REPEATS[repeat] + " task added.");
       },
@@ -912,14 +1026,7 @@ export function useLifeOS() {
 
     // ---- TRACKING ----
     const sf = skillFilter;
-    v.track = {
-      subs: [["books", "Reading"], ["skills", "Skills"], ["learnings", "Learnings"], ["flashcards", "Flashcards"]].map((s) => ({ key: s[0], label: s[1], st: chip(tsub === s[0]), pick: () => setTsub(s[0]) })),
-      isBooks: tsub === "books", isSkills: tsub === "skills", isLearn: tsub === "learnings", isFlash: tsub === "flashcards",
-      bookMeta: (() => {
-        const f = d.books.filter((b) => b.status === "Finished").length, r = d.books.filter((b) => b.status === "Reading").length;
-        return f + " finished · " + r + " reading · " + d.books.length + " total";
-      })(),
-      books: d.books.map((b) => {
+    const booksComputed = d.books.map((b) => {
         const cyc = { "To read": "Reading", Reading: "Finished", Finished: "To read" };
         const c = b.status === "Reading" ? "var(--green)" : b.status === "Finished" ? "var(--hint)" : "var(--red)";
         return {
@@ -962,7 +1069,15 @@ export function useLifeOS() {
             toast("Reading", "Passage added.");
           },
         };
-      }),
+      });
+
+    v.track = {
+      subs: [["books", "Reading"], ["skills", "Skills"], ["learnings", "Learnings"], ["flashcards", "Flashcards"]].map((s) => ({ key: s[0], label: s[1], st: chip(tsub === s[0]), pick: () => setTsub(s[0]) })),
+      isBooks: tsub === "books", isSkills: tsub === "skills", isLearn: tsub === "learnings", isFlash: tsub === "flashcards",
+      bookMeta: (() => {
+        const f = d.books.filter((b) => b.status === "Finished").length, r = d.books.filter((b) => b.status === "Reading").length;
+        return f + " finished · " + r + " reading · " + d.books.length + " total";
+      })(),
       addBook: (e) => {
         e.preventDefault();
         const t = (ref("bTitle").current.value || "").trim();
@@ -971,6 +1086,10 @@ export function useLifeOS() {
         ref("bTitle").current.value = ""; ref("bAuthor").current.value = "";
         toast("Reading", "“" + t + "” added to the shelf.");
       },
+      bookTiles: booksComputed.map((b) => ({ key: b.key, t: b.t, cover: b.cover, open: () => setOpenBookId(b.key) })),
+      bookDetail: openBookId
+        ? Object.assign({}, booksComputed.filter((b) => b.key === openBookId)[0], { back: () => setOpenBookId(null) })
+        : null,
       skillTabs: ["All", "Learned", "Planned"].map((f) => ({ label: f, st: chip(sf === f), pick: () => setSkillFilter(f) })),
       skills: d.skills.filter((s) => sf === "All" || (sf === "Learned" ? s.status === "learned" : s.status === "planned"))
         .sort((a, b) => (a.status === b.status ? ((a.date || "") < (b.date || "") ? 1 : -1) : a.status === "planned" ? -1 : 1))
@@ -994,10 +1113,25 @@ export function useLifeOS() {
       },
       learnDate: fmtLong(now),
       learnCount: d.learnings.length + (d.learnings.length === 1 ? " entry" : " entries"),
-      learnings: d.learnings.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((l) => ({
-        key: l.id, date: fmtFull(l.date), text: l.text, textSt: prose(15),
-        remove: () => { mut((x) => { x.learnings = x.learnings.filter((y) => y.id !== l.id); }); },
-      })),
+      learnings: d.learnings.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((l) => {
+        const title = l.title || (l.text.length > 40 ? l.text.slice(0, 40) + "…" : l.text);
+        return {
+          key: l.id, title, date: fmtFull(l.date), text: l.text, textSt: prose(15),
+          open: () => setOpenLearningId(l.id),
+          remove: () => { mut((x) => { x.learnings = x.learnings.filter((y) => y.id !== l.id); }); },
+        };
+      }),
+      learningDetail: (() => {
+        if (!openLearningId) return null;
+        const l = d.learnings.filter((x) => x.id === openLearningId)[0];
+        if (!l) return null;
+        const title = l.title || (l.text.length > 40 ? l.text.slice(0, 40) + "…" : l.text);
+        return {
+          key: l.id, title, date: fmtFull(l.date), text: l.text, textSt: prose(15),
+          back: () => setOpenLearningId(null),
+          remove: () => { mut((x) => { x.learnings = x.learnings.filter((y) => y.id !== l.id); }); setOpenLearningId(null); },
+        };
+      })(),
       learnEmpty: d.learnings.length ? "" : "Nothing recorded yet — write today’s learning on the left.",
       learnStreak: (() => {
         let n = 0;
@@ -1009,10 +1143,11 @@ export function useLifeOS() {
       })(),
       addLearning: (e) => {
         e.preventDefault();
+        const title = (ref("lTitle").current.value || "").trim();
         const v2 = (ref("lText").current.value || "").trim();
-        if (!v2) return;
-        mut((x) => { x.learnings = x.learnings.filter((l) => l.date !== tk); x.learnings.unshift({ id: "l" + Date.now(), date: tk, text: v2 }); });
-        ref("lText").current.value = "";
+        if (!title) { toast("Learnings", "Give it a short title."); return; }
+        mut((x) => { x.learnings = x.learnings.filter((l) => l.date !== tk); x.learnings.unshift({ id: "l" + Date.now(), date: tk, title, text: v2 }); });
+        ref("lTitle").current.value = ""; ref("lText").current.value = "";
         toast("Learnings", "Saved for " + fmtShort(tk) + ".");
       },
       flash: (() => {
@@ -1022,16 +1157,30 @@ export function useLifeOS() {
         const dueOf = (id) => cardsOf(id).filter((c) => c.due <= tk).length;
 
         if (flashStudy) {
-          const card = flashCards.filter((c) => c.id === flashStudy.queue[flashStudy.pos])[0];
+          const s = flashStudy;
+          if (s.phase === "summary") {
+            return {
+              view: "study",
+              study: {
+                summary: true, knownCount: s.known.length, unknownCount: s.unknown.length,
+                reviewUnknown: s.unknown.length ? () => reviewGroup("unknown") : null,
+                reviewKnown: s.known.length ? () => reviewGroup("known") : null,
+                end: () => endStudy(),
+              },
+            };
+          }
+          const card = flashCards.filter((c) => c.id === s.queue[s.pos])[0];
           return {
             view: "study",
             study: !card ? null : {
-              pos: flashStudy.pos + 1, total: flashStudy.queue.length, correct: flashStudy.correct,
-              front: card.front, back: card.back, flipped: flashStudy.flipped,
-              flip: () => setFlashStudy((s) => (s ? Object.assign({}, s, { flipped: true }) : s)),
+              summary: false,
+              phaseLabel: s.phase === "pass" ? "First pass" : s.phase === "review-unknown" ? "Reviewing the unknowns" : "Reviewing the knowns",
+              pos: s.pos + 1, total: s.queue.length,
+              front: card.front, back: card.back, flipped: s.flipped,
+              flip: () => setFlashStudy((prev) => (prev ? Object.assign({}, prev, { flipped: true }) : prev)),
               again: () => answerCard(false),
               good: () => answerCard(true),
-              end: () => setFlashStudy(null),
+              end: () => endStudy(),
             },
           };
         }
@@ -1065,28 +1214,59 @@ export function useLifeOS() {
           };
         }
 
-        return {
-          view: "decks",
-          decks: flashDecks.map((dk) => ({
-            key: dk.id, name: dk.name, total: cardsOf(dk.id).length, due: dueOf(dk.id),
-            open: () => setFlashDeckId(dk.id),
-            studyDue: () => startStudy(dk.id, true),
-            remove: () => {
-              mut((x) => {
-                x.flashDecks = (x.flashDecks || []).filter((y) => y.id !== dk.id);
-                x.flashCards = (x.flashCards || []).filter((c) => c.deckId !== dk.id);
-              });
-              toast("Flashcards", "“" + dk.name + "” deck deleted.");
+        if (flashLanguage) {
+          const decksInLang = flashDecks.filter((dk) => (dk.language || "Other") === flashLanguage);
+          return {
+            view: "decks",
+            language: flashLanguage,
+            backToLanguages: () => setFlashLanguage(null),
+            decks: decksInLang.map((dk) => ({
+              key: dk.id, name: dk.name, total: cardsOf(dk.id).length, due: dueOf(dk.id),
+              open: () => setFlashDeckId(dk.id),
+              studyDue: () => startStudy(dk.id, true),
+              remove: () => {
+                mut((x) => {
+                  x.flashDecks = (x.flashDecks || []).filter((y) => y.id !== dk.id);
+                  x.flashCards = (x.flashCards || []).filter((c) => c.deckId !== dk.id);
+                });
+                toast("Flashcards", "“" + dk.name + "” deck deleted.");
+              },
+            })),
+            decksEmpty: decksInLang.length ? "" : "No deck yet in " + flashLanguage + " — add one on the right.",
+            addDeck: (e) => {
+              e.preventDefault();
+              const name = (ref("fdName").current.value || "").trim();
+              if (!name) return;
+              mut((x) => { x.flashDecks = x.flashDecks || []; x.flashDecks.push({ id: "fd" + Date.now(), name, language: flashLanguage }); });
+              ref("fdName").current.value = "";
+              toast("Flashcards", "“" + name + "” deck created.");
             },
+          };
+        }
+
+        const langMap = {};
+        flashDecks.forEach((dk) => {
+          const lang = dk.language || "Other";
+          langMap[lang] = langMap[lang] || { total: 0, due: 0 };
+          langMap[lang].total += cardsOf(dk.id).length;
+          langMap[lang].due += dueOf(dk.id);
+        });
+        return {
+          view: "languages",
+          languages: Object.keys(langMap).sort().map((lang) => ({
+            key: lang, language: lang, total: langMap[lang].total, due: langMap[lang].due,
+            open: () => setFlashLanguage(lang),
           })),
-          decksEmpty: flashDecks.length ? "" : "No deck yet — create one on the right to start learning a language.",
+          languagesEmpty: Object.keys(langMap).length ? "" : "No deck yet — create one on the right to start learning a language.",
           addDeck: (e) => {
             e.preventDefault();
+            const lang = (ref("fdLang").current.value || "").trim();
             const name = (ref("fdName").current.value || "").trim();
-            if (!name) return;
-            mut((x) => { x.flashDecks = x.flashDecks || []; x.flashDecks.push({ id: "fd" + Date.now(), name }); });
-            ref("fdName").current.value = "";
-            toast("Flashcards", "“" + name + "” deck created.");
+            if (!lang || !name) { toast("Flashcards", "Give the language and the deck a name."); return; }
+            mut((x) => { x.flashDecks = x.flashDecks || []; x.flashDecks.push({ id: "fd" + Date.now(), name, language: lang }); });
+            ref("fdLang").current.value = ""; ref("fdName").current.value = "";
+            setFlashLanguage(lang);
+            toast("Flashcards", "“" + lang + "” started with “" + name + "”.");
           },
         };
       })(),

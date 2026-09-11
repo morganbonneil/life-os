@@ -111,6 +111,17 @@ input, select, textarea, button {
   to { opacity: 1; transform: none; }
 }
 
+/* ---- launch splash ---- */
+.splash {
+  position: fixed; inset: 0; z-index: 100; background: var(--text); color: var(--bg);
+  display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center;
+  cursor: pointer; transition: opacity .5s ease;
+}
+.splash span {
+  font: 800 26px/1.3 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: -.01em;
+}
+.splash-hide { opacity: 0; pointer-events: none; }
+
 .app { min-height: 100vh; background: var(--bg); padding: 0 0 calc(96px + env(safe-area-inset-bottom)); }
 
 /* ---- bottom nav ---- */
@@ -197,6 +208,24 @@ input, select, textarea, button {
   font: 700 11px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint);
 }
 .streak-legend .streak-cell { width: 9px; height: 9px; }
+
+/* ---- book grid (Tracking > Reading) ---- */
+.book-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 18px;
+}
+.book-tile { cursor: pointer; }
+.book-tile-cover {
+  width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 10px;
+  box-shadow: 0 6px 16px var(--shadow); display: block; background: var(--panel);
+}
+.book-tile-cover-empty {
+  display: flex; align-items: center; justify-content: center; border: 1px dashed var(--input-line);
+  color: var(--faint); font: 700 11px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; text-align: center; box-shadow: none;
+}
+.book-tile-title {
+  margin-top: 8px; font: 700 12.5px/1.3 "Plus Jakarta Sans", system-ui, sans-serif; text-align: center;
+}
+.book-tile-add .book-tile-cover-empty { color: var(--green-mid); border-color: var(--green-tint-line); }
 
 .page-title {
   font: 800 46px/1.02 "Plus Jakarta Sans", system-ui, sans-serif; margin: 26px 0 22px; letter-spacing: -.015em;

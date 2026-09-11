@@ -3,15 +3,34 @@ export default function TodayTab({ today, getRef }) {
     <div>
       <h1 className="page-title">Today</h1>
 
+      <button onClick={today.goCheckin} className="btn btn-dark" style={{ display: "block", width: "100%", padding: "18px", font: "800 17px/1 'Plus Jakarta Sans',system-ui,sans-serif", marginBottom: 22 }}>
+        Check-in
+      </button>
+
       <div className="grid">
         <section>
           <div className="section-title green">Today’s to-do</div>
           {today.tasks.map((t) => (
-            <div key={t.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", borderBottom: "1px solid var(--line2)", cursor: "pointer" }} onClick={t.toggle}>
-              <span style={t.box}>{t.mark}</span>
+            <div key={t.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", borderBottom: "1px solid var(--line2)" }}>
+              {!t.isTimed && <span onClick={t.toggle} style={{ ...t.box, cursor: "pointer" }}>{t.mark}</span>}
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={t.name}>{t.title}</span>
+                <span
+                  onClick={t.openGrid || t.toggle}
+                  style={t.openGrid ? { ...t.name, cursor: "pointer", textDecoration: "underline" } : { ...t.name, cursor: "pointer" }}
+                >
+                  {t.title}
+                </span>
                 <span style={{ display: "block", font: "700 11.5px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 3 }}>{t.link}</span>
+                {t.isTimed && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                    <input
+                      type="number" min="0" defaultValue={t.minutesToday || ""} placeholder="0"
+                      onBlur={(e) => t.logMinutes(Math.max(0, Math.round(+e.target.value || 0)))}
+                      style={{ width: 64, border: "1px solid var(--input-line)", borderRadius: 8, padding: "6px 8px", font: "700 14px/1 'Plus Jakarta Sans',system-ui,sans-serif", background: "var(--bg)", color: "var(--text)" }}
+                    />
+                    <span style={{ font: "700 12px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)" }}>min today · target {t.timeTarget} min</span>
+                  </div>
+                )}
               </span>
             </div>
           ))}

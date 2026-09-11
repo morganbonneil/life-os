@@ -71,35 +71,44 @@ export default function GoalsTab({ goals, getRef }) {
         ))}
       </div>
 
-      {goals.isHorizons && (
-        <div className="grid grid-wider">
-          {goals.domains.map((dm) => (
-            <section key={dm.key}>
-              <div className="section-title-row">
-                <span style={dm.head}>{dm.name}</span>
-                <span className="count">{dm.count}</span>
-              </div>
-              {dm.goals.map((g) => (
-                <div key={g.key} style={{ padding: "12px 0", borderBottom: "1px solid var(--line2)" }}>
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <span onClick={g.toggle} style={g.box}>{g.mark}</span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={g.name}>{g.title}</span>
-                      <span style={{ display: "block", font: "700 11.5px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{g.meta}</span>
-                    </span>
-                    <span style={{ font: "800 12.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", whiteSpace: "nowrap", marginTop: 2 }}>{g.prog}%</span>
-                    <button onClick={g.remove} title="Delete" className="btn-x">✕</button>
-                  </div>
-                  <div style={{ height: 3, background: "var(--line2)", marginTop: 8 }}><div style={g.bar} /></div>
-                </div>
-              ))}
-              <form className="inline-form" onSubmit={dm.add}>
-                <input ref={dm.refTitle} placeholder="New goal…" />
-                <input ref={dm.refDue} type="date" style={{ border: 0, borderBottom: "1px solid var(--input-line)", background: "transparent", padding: "7px 2px", font: "700 13px/1.2 'Plus Jakarta Sans',system-ui,sans-serif" }} />
-                <button type="submit" className="btn btn-small">Add</button>
-              </form>
+      {goals.isHorizons && !goals.horizonDetail && (
+        <div className="grid grid-wide">
+          {goals.horizons.map((dm) => (
+            <section key={dm.key} onClick={dm.open} style={{ cursor: "pointer" }}>
+              <div style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif" }}>{dm.name}</div>
+              <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 6 }}>{dm.count}</div>
             </section>
           ))}
+        </div>
+      )}
+
+      {goals.isHorizons && goals.horizonDetail && (
+        <div className="grid grid-wider">
+          <section style={{ gridColumn: "1 / -1" }}>
+            <div className="section-title-row">
+              <button onClick={goals.horizonDetail.back} className="link-btn" style={{ textDecoration: "none" }}>← Themes</button>
+              <span style={goals.horizonDetail.head}>{goals.horizonDetail.name}</span>
+            </div>
+            {goals.horizonDetail.goals.map((g) => (
+              <div key={g.key} style={{ padding: "12px 0", borderBottom: "1px solid var(--line2)" }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span onClick={g.toggle} style={g.box}>{g.mark}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={g.name}>{g.title}</span>
+                    <span style={{ display: "block", font: "700 11.5px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{g.meta}</span>
+                  </span>
+                  <span style={{ font: "800 12.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", whiteSpace: "nowrap", marginTop: 2 }}>{g.prog}%</span>
+                  <button onClick={g.remove} title="Delete" className="btn-x">✕</button>
+                </div>
+                <div style={{ height: 3, background: "var(--line2)", marginTop: 8 }}><div style={g.bar} /></div>
+              </div>
+            ))}
+            <form className="inline-form" onSubmit={goals.horizonDetail.add}>
+              <input ref={goals.horizonDetail.refTitle} placeholder="New goal…" />
+              <input ref={goals.horizonDetail.refDue} type="date" style={{ border: 0, borderBottom: "1px solid var(--input-line)", background: "transparent", padding: "7px 2px", font: "700 13px/1.2 'Plus Jakarta Sans',system-ui,sans-serif" }} />
+              <button type="submit" className="btn btn-small">Add</button>
+            </form>
+          </section>
         </div>
       )}
 
@@ -110,6 +119,17 @@ export default function GoalsTab({ goals, getRef }) {
               <button onClick={goals.gridView.back} className="link-btn" style={{ textDecoration: "none" }}>← Back to to-do</button>
               <span className="count">{goals.gridView.title}</span>
             </div>
+            {goals.gridView.isTimed && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+                <input
+                  type="number" min="0" defaultValue={goals.gridView.todayMinutes || ""} placeholder="0"
+                  onBlur={(e) => goals.gridView.logMinutes(Math.max(0, Math.round(+e.target.value || 0)))}
+                  style={{ width: 72, border: "1px solid var(--input-line)", borderRadius: 8, padding: "8px", font: "700 15px/1 'Plus Jakarta Sans',system-ui,sans-serif", background: "var(--bg)", color: "var(--text)" }}
+                />
+                <span style={{ font: "700 13px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)" }}>min today · target {goals.gridView.timeTarget} min</span>
+                <span style={{ font: "800 13px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--green-mid)", marginLeft: "auto" }}>{goals.gridView.statsLabel}</span>
+              </div>
+            )}
             {goals.gridView.kind === "daily"
               ? <DailyTaskGrid grid={goals.gridView.grid} />
               : <StreakGrid grid={goals.gridView.grid} className="streak-grid-weekly" />}
@@ -146,10 +166,20 @@ export default function GoalsTab({ goals, getRef }) {
 
             {goals.tasks.map((t) => (
               <div key={t.key} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--line2)" }}>
-                <span onClick={t.toggle} style={t.box}>{t.mark}</span>
+                {!t.isTimed && <span onClick={t.toggle} style={t.box}>{t.mark}</span>}
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={t.name}>{t.title}</span>
+                  <span onClick={t.openGrid || t.toggle} style={t.openGrid ? { ...t.name, cursor: "pointer", textDecoration: "underline" } : { ...t.name, cursor: "pointer" }}>{t.title}</span>
                   <span style={{ display: "block", font: "700 11.5px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 3 }}>{t.link}</span>
+                  {t.isTimed && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                      <input
+                        type="number" min="0" defaultValue={t.minutesToday || ""} placeholder="0"
+                        onBlur={(e) => t.logMinutes(Math.max(0, Math.round(+e.target.value || 0)))}
+                        style={{ width: 64, border: "1px solid var(--input-line)", borderRadius: 8, padding: "6px 8px", font: "700 14px/1 'Plus Jakarta Sans',system-ui,sans-serif", background: "var(--bg)", color: "var(--text)" }}
+                      />
+                      <span style={{ font: "700 12px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)" }}>min today · target {t.timeTarget} min</span>
+                    </div>
+                  )}
                 </span>
                 <button onClick={t.remove} title="Delete" className="btn-x">✕</button>
               </div>
@@ -180,6 +210,10 @@ export default function GoalsTab({ goals, getRef }) {
                 <div>
                   <label className="field-label">Date (one-off)</label>
                   <input ref={getRef("gDate")} type="date" className="ln" />
+                </div>
+                <div>
+                  <label className="field-label">Time target — min/day (daily only)</label>
+                  <input ref={getRef("gTimeTarget")} type="number" min="0" placeholder="e.g. 40" className="ln" />
                 </div>
               </div>
               <button type="submit" className="btn btn-green" style={{ marginTop: 16 }}>Add task</button>

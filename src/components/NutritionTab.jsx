@@ -13,6 +13,13 @@ export default function NutritionTab({ nutri, getRef }) {
 
       {nutri.isDay && (
         <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <button onClick={nutri.weekNav.prev} className="btn btn-small" style={{ padding: "7px 11px" }}>←</button>
+            <span style={{ font: "800 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", flex: 1, textAlign: "center" }}>{nutri.weekNav.label}</span>
+            <button onClick={nutri.weekNav.next} className="btn btn-small" style={{ padding: "7px 11px" }}>→</button>
+            {!nutri.weekNav.isThisWeek && <button onClick={nutri.weekNav.today} className="link-btn" style={{ textDecoration: "none" }}>Today</button>}
+          </div>
+
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
             {nutri.days.map((d) => (
               <button key={d.key} onClick={d.pick} style={d.st} className="day-btn">

@@ -42,6 +42,35 @@ export const CAT_HINTS = [
 
 export const UNIT_STEP = { g: 50, ml: 50, cl: 10, kg: 0.5, l: 0.5, pc: 1, "": 1 };
 
+// Average weight of one piece, for showing fruit & veg on the grocery list
+// as "3 pc" instead of "360 g" — order matters (more specific names first,
+// e.g. "pomme de terre" before "pomme").
+export const PIECE_WEIGHT_G = [
+  [["pomme de terre", "pommes de terre", "potato"], 150],
+  [["patate douce", "sweet potato"], 250],
+  [["pomme", "apple"], 180],
+  [["banane", "banana"], 120],
+  [["orange"], 200],
+  [["mangue", "mango"], 350],
+  [["avocat", "avocado"], 200],
+  [["citron", "lemon"], 100],
+  [["tomate", "tomato"], 120],
+  [["oignon", "onion"], 110],
+  [["poivron", "pepper"], 120],
+  [["courgette"], 200],
+  [["carotte", "carrot"], 80],
+  [["brocoli", "broccoli"], 300],
+];
+
+export function pieceWeightFor(name) {
+  // Prefix match, not "includes" — "Jus d'orange" must not match "orange".
+  const n = String(name || "").trim().toLowerCase();
+  for (const [keys, g] of PIECE_WEIGHT_G) {
+    if (keys.some((k) => n.startsWith(k))) return g;
+  }
+  return null;
+}
+
 export const RECOV = [
   { k: "fatigue", label: "Muscular & nervous fatigue", short: "Fatigue", hint: "0 = wrecked · 10 = completely fresh", opt: false },
   { k: "sleep", label: "Sleep", short: "Sleep", hint: "How the night actually felt", opt: false },

@@ -9,88 +9,108 @@ export default function TrackingTab({ track, getRef }) {
         ))}
       </div>
 
-      {track.isBooks && (
-        <div className="grid grid-wider">
-          <section>
-            <div className="section-title-row">
-              <span className="section-title green" style={{ border: 0, padding: 0 }}>Reading</span>
-              <span className="count">{track.bookMeta}</span>
-            </div>
-            {track.books.map((b) => (
-              <div key={b.key} style={{ padding: "16px 0", borderBottom: "1px solid var(--line2)" }}>
-                <div style={{ display: "flex", gap: 12 }}>
-                  {b.cover ? (
-                    <img
-                      src={b.cover} alt="" onClick={b.pickCover}
-                      style={{ width: 56, height: 84, flex: "none", objectFit: "cover", borderRadius: 8, boxShadow: "0 4px 12px var(--shadow)", cursor: "pointer" }}
-                    />
-                  ) : (
-                    <div
-                      onClick={b.pickCover} title="Add a cover photo"
-                      style={{ width: 56, height: 84, flex: "none", borderRadius: 8, border: "1px dashed var(--input-line)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", font: "700 10.5px/1.2 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", textAlign: "center", padding: 4 }}
-                    >
-                      + cover
-                    </div>
-                  )}
-                  <input
-                    ref={b.coverInputRef} type="file" accept="image/*" style={{ display: "none" }}
-                    onChange={(e) => { const f = e.target.files && e.target.files[0]; b.setCover(f); e.target.value = ""; }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                      <span style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif" }}>{b.t}</span>
-                      <button onClick={b.cycle} style={b.tag}>{b.status}</button>
-                      <button onClick={b.remove} title="Delete" className="btn-x">✕</button>
-                    </div>
-                    <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{b.a}</div>
-                    <div style={{ display: "flex", gap: 2, alignItems: "center", marginTop: 9, flexWrap: "wrap" }}>
-                      {b.stars.map((s, i) => (
-                        <button key={i} onClick={s.pick} title={s.title} style={s.st}>★</button>
-                      ))}
-                      <span style={{ font: "700 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginLeft: 8, whiteSpace: "nowrap" }}>{b.ratingTxt}</span>
-                    </div>
-                    {b.cover && <button onClick={b.removeCover} className="link-btn" style={{ textDecoration: "none", marginTop: 8, fontSize: 11.5 }}>Remove cover</button>}
-                  </div>
-                </div>
-                <form onSubmit={b.saveReview} style={{ marginTop: 11 }}>
-                  <textarea ref={b.refReview} rows={3} defaultValue={b.review} placeholder="What you thought of it…" style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 9, font: "700 14px/1.55 'Plus Jakarta Sans',system-ui,sans-serif", resize: "vertical" }} />
-                  <button type="submit" className="btn btn-small" style={{ marginTop: 8 }}>Save review</button>
-                </form>
-                <div style={{ marginTop: 12 }}>
-                  <div className="field-label" style={{ marginBottom: 0 }}>Quotes &amp; passages</div>
-                  {b.quotes.map((q) => (
-                    <div key={q.key} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line2)" }}>
-                      <span style={q.st}>{q.text}</span>
-                      <button onClick={q.remove} title="Delete" className="btn-x" style={{ fontSize: 12.5 }}>✕</button>
-                    </div>
-                  ))}
-                  <form className="inline-form" onSubmit={b.addQuote}>
-                    <input ref={b.refQuote} placeholder="A passage that stayed with you…" />
-                    <button type="submit" className="btn btn-small" style={{ padding: "7px 11px", fontSize: 12.5 }}>Add</button>
-                  </form>
-                </div>
+      {track.isBooks && !track.bookDetail && (
+        <div>
+          <div className="section-title-row" style={{ marginBottom: 16 }}>
+            <span className="section-title green" style={{ border: 0, padding: 0 }}>Reading</span>
+            <span className="count">{track.bookMeta}</span>
+          </div>
+          <div className="book-grid">
+            {track.bookTiles.map((b) => (
+              <div key={b.key} onClick={b.open} className="book-tile">
+                {b.cover ? (
+                  <img src={b.cover} alt="" className="book-tile-cover" />
+                ) : (
+                  <div className="book-tile-cover book-tile-cover-empty">no cover</div>
+                )}
+                <div className="book-tile-title">{b.t}</div>
               </div>
             ))}
-          </section>
+            <div className="book-tile book-tile-add" onClick={() => document.getElementById("bTitle")?.focus()}>
+              <div className="book-tile-cover book-tile-cover-empty">+ add</div>
+              <div className="book-tile-title">New book</div>
+            </div>
+          </div>
 
-          <section>
-            <div className="section-title red">Add a book</div>
-            <form onSubmit={track.addBook}>
-              <div className="field">
-                <label>Title</label>
-                <input ref={getRef("bTitle")} placeholder="Peak" />
-              </div>
-              <div className="field-grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))" }}>
-                <div><label className="field-label">Author</label><input ref={getRef("bAuthor")} placeholder="Anders Ericsson" className="ln" /></div>
-                <div>
-                  <label className="field-label">Status</label>
-                  <select ref={getRef("bStatus")} className="ln" defaultValue="To read">
-                    <option value="To read">To read</option><option value="Reading">Reading</option><option value="Finished">Finished</option>
-                  </select>
+          <div className="grid grid-wide" style={{ marginTop: 24 }}>
+            <section>
+              <div className="section-title red">Add a book</div>
+              <form onSubmit={track.addBook}>
+                <div className="field">
+                  <label>Title</label>
+                  <input id="bTitle" ref={getRef("bTitle")} placeholder="Peak" />
                 </div>
+                <div className="field-grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))" }}>
+                  <div><label className="field-label">Author</label><input ref={getRef("bAuthor")} placeholder="Anders Ericsson" className="ln" /></div>
+                  <div>
+                    <label className="field-label">Status</label>
+                    <select ref={getRef("bStatus")} className="ln" defaultValue="To read">
+                      <option value="To read">To read</option><option value="Reading">Reading</option><option value="Finished">Finished</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" className="btn btn-green" style={{ marginTop: 16 }}>Add to the shelf</button>
+              </form>
+            </section>
+          </div>
+        </div>
+      )}
+
+      {track.isBooks && track.bookDetail && (
+        <div className="grid grid-wider">
+          <section style={{ gridColumn: "1 / -1" }}>
+            <button onClick={track.bookDetail.back} className="link-btn" style={{ textDecoration: "none" }}>← All books</button>
+            <div style={{ display: "flex", gap: 16, marginTop: 14 }}>
+              {track.bookDetail.cover ? (
+                <img
+                  src={track.bookDetail.cover} alt="" onClick={track.bookDetail.pickCover}
+                  style={{ width: 84, height: 126, flex: "none", objectFit: "cover", borderRadius: 10, boxShadow: "0 4px 12px var(--shadow)", cursor: "pointer" }}
+                />
+              ) : (
+                <div
+                  onClick={track.bookDetail.pickCover} title="Add a cover photo"
+                  style={{ width: 84, height: 126, flex: "none", borderRadius: 10, border: "1px dashed var(--input-line)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", font: "700 11px/1.2 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", textAlign: "center", padding: 4 }}
+                >
+                  + cover
+                </div>
+              )}
+              <input
+                ref={track.bookDetail.coverInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                onChange={(e) => { const f = e.target.files && e.target.files[0]; track.bookDetail.setCover(f); e.target.value = ""; }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+                  <span style={{ font: "800 20px/1.3 'Plus Jakarta Sans',system-ui,sans-serif" }}>{track.bookDetail.t}</span>
+                  <button onClick={track.bookDetail.cycle} style={track.bookDetail.tag}>{track.bookDetail.status}</button>
+                  <button onClick={track.bookDetail.remove} title="Delete" className="btn-x">✕</button>
+                </div>
+                <div style={{ font: "700 13px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{track.bookDetail.a}</div>
+                <div style={{ display: "flex", gap: 2, alignItems: "center", marginTop: 9, flexWrap: "wrap" }}>
+                  {track.bookDetail.stars.map((s, i) => (
+                    <button key={i} onClick={s.pick} title={s.title} style={s.st}>★</button>
+                  ))}
+                  <span style={{ font: "700 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginLeft: 8, whiteSpace: "nowrap" }}>{track.bookDetail.ratingTxt}</span>
+                </div>
+                {track.bookDetail.cover && <button onClick={track.bookDetail.removeCover} className="link-btn" style={{ textDecoration: "none", marginTop: 8, fontSize: 11.5 }}>Remove cover</button>}
               </div>
-              <button type="submit" className="btn btn-green" style={{ marginTop: 16 }}>Add to the shelf</button>
+            </div>
+            <form onSubmit={track.bookDetail.saveReview} style={{ marginTop: 16 }}>
+              <textarea ref={track.bookDetail.refReview} rows={3} defaultValue={track.bookDetail.review} placeholder="What you thought of it…" style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 9, font: "700 14px/1.55 'Plus Jakarta Sans',system-ui,sans-serif", resize: "vertical" }} />
+              <button type="submit" className="btn btn-small" style={{ marginTop: 8 }}>Save review</button>
             </form>
+            <div style={{ marginTop: 14 }}>
+              <div className="field-label" style={{ marginBottom: 0 }}>Quotes &amp; passages</div>
+              {track.bookDetail.quotes.map((q) => (
+                <div key={q.key} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line2)" }}>
+                  <span style={q.st}>{q.text}</span>
+                  <button onClick={q.remove} title="Delete" className="btn-x" style={{ fontSize: 12.5 }}>✕</button>
+                </div>
+              ))}
+              <form className="inline-form" onSubmit={track.bookDetail.addQuote}>
+                <input ref={track.bookDetail.refQuote} placeholder="A passage that stayed with you…" />
+                <button type="submit" className="btn btn-small" style={{ padding: "7px 11px", fontSize: 12.5 }}>Add</button>
+              </form>
+            </div>
           </section>
         </div>
       )}
@@ -146,12 +166,19 @@ export default function TrackingTab({ track, getRef }) {
         </div>
       )}
 
-      {track.isLearn && (
+      {track.isLearn && !track.learningDetail && (
         <div className="grid grid-wide">
           <section>
             <div className="section-title red">Learning of the day · {track.learnDate}</div>
             <form onSubmit={track.addLearning}>
-              <textarea ref={getRef("lText")} rows={7} placeholder="One thing you learned today…" style={{ width: "100%", marginTop: 14, border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 12, font: "700 15px/1.6 'Plus Jakarta Sans',system-ui,sans-serif", resize: "vertical" }} />
+              <div className="field" style={{ marginTop: 0 }}>
+                <label>Title</label>
+                <input ref={getRef("lTitle")} placeholder="What it's about, in a few words" />
+              </div>
+              <div className="field">
+                <label>Details</label>
+                <textarea ref={getRef("lText")} rows={5} placeholder="One thing you learned today…" style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 12, font: "700 15px/1.6 'Plus Jakarta Sans',system-ui,sans-serif", resize: "vertical" }} />
+              </div>
               <button type="submit" className="btn btn-green" style={{ marginTop: 10 }}>Save learning</button>
             </form>
             <div style={{ font: "700 13px/1.55 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 14 }}>{track.learnStreak}</div>
@@ -163,12 +190,9 @@ export default function TrackingTab({ track, getRef }) {
               <span className="count">{track.learnCount}</span>
             </div>
             {track.learnings.map((l) => (
-              <div key={l.key} style={{ padding: "14px 0", borderBottom: "1px solid var(--line2)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                  <span style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--faint)" }}>{l.date}</span>
-                  <button onClick={l.remove} title="Delete" className="btn-x">✕</button>
-                </div>
-                <div style={l.textSt}>{l.text}</div>
+              <div key={l.key} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline", padding: "12px 0", borderBottom: "1px solid var(--line2)" }}>
+                <span onClick={l.open} style={{ font: "700 14.5px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", textDecoration: "underline" }}>{l.title}</span>
+                <span style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", whiteSpace: "nowrap" }}>{l.date}</span>
               </div>
             ))}
             <div className="rows-empty">{track.learnEmpty}</div>
@@ -176,13 +200,27 @@ export default function TrackingTab({ track, getRef }) {
         </div>
       )}
 
+      {track.isLearn && track.learningDetail && (
+        <div className="grid grid-wide">
+          <section style={{ gridColumn: "1 / -1" }}>
+            <div className="section-title-row">
+              <button onClick={track.learningDetail.back} className="link-btn" style={{ textDecoration: "none" }}>← All learnings</button>
+              <button onClick={track.learningDetail.remove} title="Delete" className="btn-x">✕</button>
+            </div>
+            <div style={{ font: "800 20px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", marginTop: 14 }}>{track.learningDetail.title}</div>
+            <div style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--faint)", marginTop: 6 }}>{track.learningDetail.date}</div>
+            <div style={Object.assign({}, track.learningDetail.textSt, { marginTop: 14 })}>{track.learningDetail.text}</div>
+          </section>
+        </div>
+      )}
+
       {track.isFlash && (
         <div className="grid grid-wide">
-          {track.flash.view === "study" && track.flash.study && (
+          {track.flash.view === "study" && track.flash.study && !track.flash.study.summary && (
             <section style={{ gridColumn: "1 / -1", maxWidth: 420 }}>
               <div className="section-title-row">
-                <span className="section-title green" style={{ border: 0, padding: 0 }}>Studying</span>
-                <span className="count">{track.flash.study.pos} / {track.flash.study.total} · {track.flash.study.correct} correct</span>
+                <span className="section-title green" style={{ border: 0, padding: 0 }}>{track.flash.study.phaseLabel}</span>
+                <span className="count">{track.flash.study.pos} / {track.flash.study.total}</span>
               </div>
               <div
                 className="flashcard"
@@ -202,6 +240,27 @@ export default function TrackingTab({ track, getRef }) {
                 <button onClick={track.flash.study.flip} className="btn btn-dark" style={{ marginTop: 18, width: "100%" }}>Show answer</button>
               )}
               <button onClick={track.flash.study.end} className="link-btn" style={{ marginTop: 16, display: "block" }}>End session</button>
+            </section>
+          )}
+
+          {track.flash.view === "study" && track.flash.study && track.flash.study.summary && (
+            <section style={{ gridColumn: "1 / -1", maxWidth: 420 }}>
+              <div className="section-title green" style={{ border: 0, padding: 0 }}>Pass done</div>
+              <div style={{ display: "flex", gap: 24, marginTop: 18 }}>
+                <div>
+                  <div style={{ font: "800 34px/1 'Plus Jakarta Sans',system-ui,sans-serif" }}>{track.flash.study.knownCount}</div>
+                  <div style={{ font: "700 12px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>known</div>
+                </div>
+                <div>
+                  <div style={{ font: "800 34px/1 'Plus Jakarta Sans',system-ui,sans-serif" }}>{track.flash.study.unknownCount}</div>
+                  <div style={{ font: "700 12px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>to revisit</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+                {track.flash.study.reviewUnknown && <button onClick={track.flash.study.reviewUnknown} className="btn btn-green">Review the unknowns ({track.flash.study.unknownCount})</button>}
+                {track.flash.study.reviewKnown && <button onClick={track.flash.study.reviewKnown} className="btn btn-green-outline">Review the knowns ({track.flash.study.knownCount})</button>}
+                <button onClick={track.flash.study.end} className="btn">Finish</button>
+              </div>
             </section>
           )}
 
@@ -249,7 +308,10 @@ export default function TrackingTab({ track, getRef }) {
           {track.flash.view === "decks" && (
             <>
               <section>
-                <div className="section-title green">Decks</div>
+                <div className="section-title-row">
+                  <button onClick={track.flash.backToLanguages} className="link-btn" style={{ textDecoration: "none" }}>← Languages</button>
+                  <span className="section-title green" style={{ border: 0, padding: 0 }}>{track.flash.language}</span>
+                </div>
                 {track.flash.decks.map((dk) => (
                   <div key={dk.key} style={{ padding: "14px 0", borderBottom: "1px solid var(--line2)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
@@ -267,11 +329,41 @@ export default function TrackingTab({ track, getRef }) {
               </section>
 
               <section>
+                <div className="section-title red">New deck in {track.flash.language}</div>
+                <form onSubmit={track.flash.addDeck}>
+                  <div className="field">
+                    <label>Deck name</label>
+                    <input ref={getRef("fdName")} placeholder="Verbs" />
+                  </div>
+                  <button type="submit" className="btn btn-green" style={{ marginTop: 16 }}>Create deck</button>
+                </form>
+              </section>
+            </>
+          )}
+
+          {track.flash.view === "languages" && (
+            <>
+              <section>
+                <div className="section-title green">Languages</div>
+                {track.flash.languages.map((l) => (
+                  <div key={l.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid var(--line2)" }}>
+                    <span onClick={l.open} style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer" }}>{l.language}</span>
+                    <span style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)" }}>{l.total} cards · {l.due} due</span>
+                  </div>
+                ))}
+                <div className="rows-empty">{track.flash.languagesEmpty}</div>
+              </section>
+
+              <section>
                 <div className="section-title red">New deck</div>
                 <form onSubmit={track.flash.addDeck}>
                   <div className="field">
-                    <label>Language / deck name</label>
-                    <input ref={getRef("fdName")} placeholder="French — Verbs" />
+                    <label>Language</label>
+                    <input ref={getRef("fdLang")} placeholder="Italian" />
+                  </div>
+                  <div className="field">
+                    <label>Deck name</label>
+                    <input ref={getRef("fdName")} placeholder="Essentials" />
                   </div>
                   <button type="submit" className="btn btn-green" style={{ marginTop: 16 }}>Create deck</button>
                 </form>
