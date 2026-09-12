@@ -1,36 +1,4 @@
-function streakColor(pct) {
-  if (pct <= 0) return "transparent";
-  if (pct < 0.34) return "var(--green-tint-line)";
-  if (pct < 0.67) return "var(--streak-mid1)";
-  if (pct < 1) return "var(--streak-mid2)";
-  return "var(--green)";
-}
-
-function StreakGrid({ grid, className }) {
-  return (
-    <div className="streak-wrap">
-      <div className="streak-scroll">
-        <div className={className}>
-          {grid.cells.map((c) => (
-            <div
-              key={c.key}
-              title={c.title}
-              className={"streak-cell" + (c.future ? " future" : "")}
-              style={c.future ? undefined : { background: streakColor(c.pct) }}
-            />
-          ))}
-        </div>
-      </div>
-      <div className="streak-legend">
-        <span>{grid.from}</span>
-        {[0, 0.2, 0.5, 0.8, 1].map((p) => (
-          <div key={p} className="streak-cell" style={{ background: streakColor(p), border: p === 0 ? "1px solid var(--line2)" : "none" }} />
-        ))}
-        <span>{grid.to}</span>
-      </div>
-    </div>
-  );
-}
+import { useState } from "react";
 
 // One 365-day grid per daily task: filled = done, light tint = missed (past
 // and still open), dashed outline = not reached yet.
@@ -61,6 +29,7 @@ function DailyTaskGrid({ grid }) {
 }
 
 export default function GoalsTab({ goals, getRef }) {
+  const [newTaskRepeat, setNewTaskRepeat] = useState("daily");
   return (
     <div>
       <h1 className="page-title">Goals</h1>
@@ -130,9 +99,7 @@ export default function GoalsTab({ goals, getRef }) {
                 <span style={{ font: "800 13px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--green-mid)", marginLeft: "auto" }}>{goals.gridView.statsLabel}</span>
               </div>
             )}
-            {goals.gridView.kind === "daily"
-              ? <DailyTaskGrid grid={goals.gridView.grid} />
-              : <StreakGrid grid={goals.gridView.grid} className="streak-grid-weekly" />}
+            <DailyTaskGrid grid={goals.gridView.grid} />
           </section>
         </div>
       )}
@@ -148,21 +115,6 @@ export default function GoalsTab({ goals, getRef }) {
                 ))}
               </span>
             </div>
-
-            {goals.showDailyGrid && goals.dailySummaries.map((s) => (
-              <div key={s.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--line2)" }}>
-                <span style={{ font: "700 14px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" }}>{s.title}</span>
-                <button onClick={s.view} className="link-btn" style={{ textDecoration: "none", whiteSpace: "nowrap" }}>{s.streakTxt} · Calendar →</button>
-              </div>
-            ))}
-            {goals.showDailyGrid && !goals.dailySummaries.length && <div className="rows-empty">No daily task yet — add one on the right to start a streak.</div>}
-
-            {goals.showWeeklyGrid && (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--line2)" }}>
-                <span style={{ font: "700 14px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" }}>Weekly tasks calendar</span>
-                <button onClick={goals.viewWeeklyGrid} className="link-btn" style={{ textDecoration: "none" }}>Calendar →</button>
-              </div>
-            )}
 
             {goals.tasks.map((t) => (
               <div key={t.key} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 0", borderBottom: "1px solid var(--line2)" }}>
@@ -197,8 +149,8 @@ export default function GoalsTab({ goals, getRef }) {
               <div className="field-grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}>
                 <div>
                   <label className="field-label">Repeat</label>
-                  <select ref={getRef("gRepeat")} className="ln" defaultValue="daily">
-                    <option value="daily">Every day</option><option value="weekly">Every week</option><option value="monthly">Every month</option><option value="once">One-off</option>
+                  <select ref={getRef("gRepeat")} className="ln" defaultValue="daily" onChange={(e) => setNewTaskRepeat(e.target.value)}>
+                    <option value="daily">Every day</option><option value="weekly">Every week</option><option value="monthly">Every month</option>
                   </select>
                 </div>
                 <div>
@@ -207,14 +159,12 @@ export default function GoalsTab({ goals, getRef }) {
                     {goals.linkOpts.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="field-label">Date (one-off)</label>
-                  <input ref={getRef("gDate")} type="date" className="ln" />
-                </div>
-                <div>
-                  <label className="field-label">Time target — min/day (daily only)</label>
-                  <input ref={getRef("gTimeTarget")} type="number" min="0" placeholder="e.g. 40" className="ln" />
-                </div>
+                {newTaskRepeat === "daily" && (
+                  <div>
+                    <label className="field-label">Time target — min/day</label>
+                    <input ref={getRef("gTimeTarget")} type="number" min="0" placeholder="e.g. 40" className="ln" />
+                  </div>
+                )}
               </div>
               <button type="submit" className="btn btn-green" style={{ marginTop: 16 }}>Add task</button>
             </form>

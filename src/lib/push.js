@@ -26,12 +26,12 @@ function getDeviceId() {
   }
 }
 
-async function postSubscription(sub, hydrationSlots, onceTasks) {
+async function postSubscription(sub) {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const res = await fetch("/.netlify/functions/subscribe", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ deviceId: getDeviceId(), subscription: sub.toJSON(), tz, hydrationSlots, onceTasks, weeklyDigest: true }),
+    body: JSON.stringify({ deviceId: getDeviceId(), subscription: sub.toJSON(), tz, weeklyDigest: true }),
   });
   if (!res.ok) throw new Error("The server didn’t accept the subscription (status " + res.status + ").");
 }
@@ -42,7 +42,7 @@ async function postSubscription(sub, hydrationSlots, onceTasks) {
 // clear error and the app falls back to the in-app-only reminder it always
 // had. On iOS this additionally requires the app to be installed to the
 // Home Screen first — Safari refuses push subscriptions from a plain tab.
-export function usePush(hydrationSlots, onceTasks) {
+export function usePush() {
   const supported = typeof window !== "undefined" && typeof navigator !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
   const [status, setStatus] = useState("unsubscribed");
   const [error, setError] = useState("");
@@ -60,20 +60,6 @@ export function usePush(hydrationSlots, onceTasks) {
       .catch(() => {});
   }, [supported]);
 
-  // Keep the server's copy of the hydration times and open one-off tasks
-  // current while subscribed.
-  useEffect(() => {
-    if (status !== "subscribed" || !supported) return;
-    (async () => {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
-        if (sub) await postSubscription(sub, hydrationSlots, onceTasks);
-      } catch { /* best-effort resync */ }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(hydrationSlots), JSON.stringify(onceTasks), status, supported]);
-
   async function enable() {
     if (!supported) return;
     setStatus("pending");
@@ -85,7 +71,7 @@ export function usePush(hydrationSlots, onceTasks) {
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
       if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
-      await postSubscription(sub, hydrationSlots, onceTasks);
+      await postSubscription(sub);
       setStatus("subscribed");
     } catch (e) {
       setStatus("error");

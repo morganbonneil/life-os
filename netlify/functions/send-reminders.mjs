@@ -9,10 +9,10 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 }
 
 // Runs every 5 minutes. For each subscribed device, works out that device's
-// current local time from its stored IANA timezone and fires a push for any
-// hydration slot (or the Sunday 20:00 form digest) that just came due and
-// hasn't already been sent today/this week. A 5-minute match window covers
-// clock drift between this cron tick and the device's stored time.
+// current local time from its stored IANA timezone and fires a push for the
+// Sunday 20:00 form digest once it comes due and hasn't already been sent
+// this week. A 5-minute match window covers clock drift between this cron
+// tick and the device's stored time.
 function localParts(tz, date) {
   const fmt = new Intl.DateTimeFormat("en-GB", {
     timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
@@ -58,33 +58,7 @@ export default async () => {
     let changed = false;
     let gone = false;
 
-    for (const slot of entry.hydrationSlots || []) {
-      const sentKey = "hydra:" + slot;
-      if (entry.sent[sentKey] === dateKey) continue;
-      if (withinWindow(slot, hm, 5)) {
-        const result = await sendPush(entry.subscription, "Hydration · Life OS", "Glass due at " + slot + ".");
-        if (result === "gone") { gone = true; break; }
-        if (result) { entry.sent[sentKey] = dateKey; changed = true; }
-      }
-    }
-
-    // One-off to-dos: a single reminder at 08:00 local time on their due
-    // date, skipped once fired (dedup key is the task id, which never
-    // recurs since these tasks don't repeat) or once the client stops
-    // resending it (meaning it was ticked off or deleted).
-    if (!gone) {
-      for (const t of entry.onceTasks || []) {
-        const sentKey = "once:" + t.id;
-        if (entry.sent[sentKey]) continue;
-        if (t.date === dateKey && withinWindow("08:00", hm, 5)) {
-          const result = await sendPush(entry.subscription, "To-do today · Life OS", t.title);
-          if (result === "gone") { gone = true; break; }
-          if (result) { entry.sent[sentKey] = true; changed = true; }
-        }
-      }
-    }
-
-    if (!gone && entry.weeklyDigest && dow === "Sun" && withinWindow("20:00", hm, 5)) {
+    if (entry.weeklyDigest && dow === "Sun" && withinWindow("20:00", hm, 5)) {
       const wkKey = "digest:" + dateKey;
       if (entry.sent.digest !== wkKey) {
         const result = await sendPush(entry.subscription, "This week’s form · Life OS", "Open Life OS to see this week’s check-ins.");

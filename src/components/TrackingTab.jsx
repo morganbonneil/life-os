@@ -115,57 +115,6 @@ export default function TrackingTab({ track, getRef }) {
         </div>
       )}
 
-      {track.isSkills && (
-        <div className="grid grid-wide">
-          <section>
-            <div className="section-title-row">
-              <span className="section-title green" style={{ border: 0, padding: 0 }}>Skills</span>
-              <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {track.skillTabs.map((f) => (
-                  <button key={f.label} onClick={f.pick} style={f.st}>{f.label}</button>
-                ))}
-              </span>
-            </div>
-            {track.skills.map((s) => (
-              <div key={s.key} style={{ padding: "13px 0", borderBottom: "1px solid var(--line2)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                  <span style={s.nameSt}>{s.n}</span>
-                  <button onClick={s.cycle} style={s.tag}>{s.statusTxt}</button>
-                  <button onClick={s.remove} title="Delete" className="btn-x">✕</button>
-                </div>
-                <div style={{ font: "700 13px/1.55 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 4 }}>{s.note}</div>
-                <div style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 6 }}>{s.dateTxt}</div>
-              </div>
-            ))}
-            <div className="rows-empty">{track.skillEmpty}</div>
-          </section>
-
-          <section>
-            <div className="section-title red">New skill</div>
-            <form onSubmit={track.addSkill}>
-              <div className="field">
-                <label>Skill</label>
-                <input ref={getRef("skName")} placeholder="Race video analysis" />
-              </div>
-              <div className="field-grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))" }}>
-                <div>
-                  <label className="field-label">Status</label>
-                  <select ref={getRef("skStatus")} className="ln" defaultValue="learned">
-                    <option value="learned">Learned</option><option value="planned">Planned</option>
-                  </select>
-                </div>
-                <div><label className="field-label">Date</label><input ref={getRef("skDate")} type="date" className="ln" /></div>
-              </div>
-              <div className="field">
-                <label>Note</label>
-                <textarea ref={getRef("skNote")} rows={3} placeholder="What it covers, where you got it…" />
-              </div>
-              <button type="submit" className="btn btn-green" style={{ marginTop: 16 }}>Save skill</button>
-            </form>
-          </section>
-        </div>
-      )}
-
       {track.isLearn && !track.learningDetail && (
         <div className="grid grid-wide">
           <section>
@@ -205,11 +154,33 @@ export default function TrackingTab({ track, getRef }) {
           <section style={{ gridColumn: "1 / -1" }}>
             <div className="section-title-row">
               <button onClick={track.learningDetail.back} className="link-btn" style={{ textDecoration: "none" }}>← All learnings</button>
-              <button onClick={track.learningDetail.remove} title="Delete" className="btn-x">✕</button>
+              <span style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
+                {!track.learningDetail.editing && <button onClick={track.learningDetail.edit} className="link-btn" style={{ textDecoration: "none", fontSize: 12.5 }}>Edit</button>}
+                <button onClick={track.learningDetail.remove} title="Delete" className="btn-x">✕</button>
+              </span>
             </div>
-            <div style={{ font: "800 20px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", marginTop: 14 }}>{track.learningDetail.title}</div>
-            <div style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--faint)", marginTop: 6 }}>{track.learningDetail.date}</div>
-            <div style={Object.assign({}, track.learningDetail.textSt, { marginTop: 14 })}>{track.learningDetail.text}</div>
+            {!track.learningDetail.editing ? (
+              <>
+                <div style={{ font: "800 20px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", marginTop: 14 }}>{track.learningDetail.title}</div>
+                <div style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--faint)", marginTop: 6 }}>{track.learningDetail.date}</div>
+                <div style={Object.assign({}, track.learningDetail.textSt, { marginTop: 14 })}>{track.learningDetail.text}</div>
+              </>
+            ) : (
+              <form onSubmit={track.learningDetail.saveEdit} style={{ marginTop: 14 }}>
+                <div className="field" style={{ marginTop: 0 }}>
+                  <label>Title</label>
+                  <input ref={track.learningDetail.refTitle} defaultValue={track.learningDetail.title} />
+                </div>
+                <div className="field">
+                  <label>Details</label>
+                  <textarea ref={track.learningDetail.refText} rows={5} defaultValue={track.learningDetail.text} style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 12, font: "700 15px/1.6 'Plus Jakarta Sans',system-ui,sans-serif", resize: "vertical" }} />
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button type="submit" className="btn btn-green btn-small">Save changes</button>
+                  <button type="button" onClick={track.learningDetail.cancelEdit} className="btn btn-small">Cancel</button>
+                </div>
+              </form>
+            )}
           </section>
         </div>
       )}
@@ -314,15 +285,33 @@ export default function TrackingTab({ track, getRef }) {
                 </div>
                 {track.flash.decks.map((dk) => (
                   <div key={dk.key} style={{ padding: "14px 0", borderBottom: "1px solid var(--line2)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                      <span onClick={dk.open} style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer" }}>{dk.name}</span>
-                      <button onClick={dk.remove} title="Delete" className="btn-x">✕</button>
-                    </div>
-                    <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 4 }}>{dk.total} cards · {dk.due} due today</div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                      <button onClick={dk.open} className="btn btn-small">Open</button>
-                      <button onClick={dk.studyDue} className="btn btn-green btn-small" disabled={!dk.due}>Study due ({dk.due})</button>
-                    </div>
+                    {!dk.editing ? (
+                      <>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+                          <span onClick={dk.open} style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer" }}>{dk.name}</span>
+                          <span style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
+                            <button onClick={dk.edit} className="link-btn" style={{ textDecoration: "none", fontSize: 12.5 }}>Edit</button>
+                            <button onClick={dk.remove} title="Delete" className="btn-x">✕</button>
+                          </span>
+                        </div>
+                        <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 4 }}>{dk.total} cards · {dk.due} due today</div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                          <button onClick={dk.open} className="btn btn-small">Open</button>
+                          <button onClick={dk.studyDue} className="btn btn-green btn-small" disabled={!dk.due}>Study due ({dk.due})</button>
+                        </div>
+                      </>
+                    ) : (
+                      <form onSubmit={dk.saveEdit}>
+                        <div className="field-grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))" }}>
+                          <div><label className="field-label">Deck name</label><input ref={dk.refName} defaultValue={dk.name} className="ln" /></div>
+                          <div><label className="field-label">Language</label><input ref={dk.refLanguage} defaultValue={dk.language} className="ln" /></div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                          <button type="submit" className="btn btn-green btn-small">Save changes</button>
+                          <button type="button" onClick={dk.cancelEdit} className="btn btn-small">Cancel</button>
+                        </div>
+                      </form>
+                    )}
                   </div>
                 ))}
                 <div className="rows-empty">{track.flash.decksEmpty}</div>

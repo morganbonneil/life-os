@@ -92,17 +92,18 @@ export function useLifeOS() {
   const [tsub, setTsub] = useState("books");
   const [libFilter, setLibFilter] = useState("All");
   const [scope, setScope] = useState("daily");
-  const [skillFilter, setSkillFilter] = useState("All");
   const [timeKind, setTimeKind] = useState("test");
   const [editingMealId, setEditingMealId] = useState(null);
   const [flashLanguage, setFlashLanguage] = useState(null);
   const [flashDeckId, setFlashDeckId] = useState(null);
+  const [editingDeckId, setEditingDeckId] = useState(null);
   const [flashStudy, setFlashStudy] = useState(null); // { deckId, phase, queue: [cardId,...], pos, flipped, known: [id,...], unknown: [id,...] }
   const [gridView, setGridView] = useState(null); // { kind: "daily", taskId } | { kind: "weekly" } | null
   const [weekOffset, setWeekOffset] = useState(0);
   const [horizonDomain, setHorizonDomain] = useState(null);
   const [openBookId, setOpenBookId] = useState(null);
   const [openLearningId, setOpenLearningId] = useState(null);
+  const [editingLearningId, setEditingLearningId] = useState(null);
   const [themePref, setThemePrefState] = useState(() => {
     try { return localStorage.getItem(THEME_KEY) || "system"; } catch { return "system"; }
   });
@@ -117,8 +118,6 @@ export function useLifeOS() {
     if (themePref === "light" || themePref === "dark") root.setAttribute("data-theme", themePref);
     else root.removeAttribute("data-theme");
   }, [themePref]);
-  const [notif, setNotif] = useState(() => (typeof Notification !== "undefined" ? Notification.permission : "unsupported"));
-
   const timers = useRef([]);
   const refsStore = useRef({});
   const dataRef = useRef(data);
@@ -167,37 +166,6 @@ export function useLifeOS() {
     return false;
   }
 
-  function nextReminder(d) {
-    const now = new Date(), k = iso(now), done = d.hydra.done[k] || {};
-    const cur = now.getHours() * 60 + now.getMinutes();
-    for (const s of d.hydra.slots) {
-      const p = s.split(":"), m = +p[0] * 60 + +p[1];
-      if (!done[s] && m <= cur + 30) return s;
-    }
-    return d.hydra.slots.filter((s) => !done[s])[0] || null;
-  }
-
-  function checkHydra() {
-    const d = structuredClone(dataRef.current);
-    const now = new Date(), k = iso(now), cur = now.getHours() * 60 + now.getMinutes();
-    const fired = d.hydra.fired[k] || {};
-    let hit = null;
-    for (const s of d.hydra.slots) {
-      const p = s.split(":"), m = +p[0] * 60 + +p[1];
-      if (!fired[s] && cur >= m && cur - m < 120 && !(d.hydra.done[k] || {})[s]) { hit = s; break; }
-    }
-    if (!hit) return;
-    d.hydra.fired[k] = d.hydra.fired[k] || {};
-    d.hydra.fired[k][hit] = true;
-    dataRef.current = d;
-    setData(d);
-    persist(d);
-    if (dbDocRef.current) dbDocRef.current.set(d).catch(() => {});
-    const body = "Glass due at " + hit + " — target " + d.hydra.targetL + " L today.";
-    notify("Hydration · Life OS", body);
-    toast("Reminder " + hit, body);
-  }
-
   // Sunday 20:00 — a text summary of the week's daily check-ins ("Mon 7.2 ·
   // Tue — · … — average 7.4/10"). Same honest limitation as hydration
   // reminders: this only fires while the app happens to be open (foreground
@@ -229,9 +197,8 @@ export function useLifeOS() {
   }
 
   useEffect(() => {
-    checkHydra();
     checkWeeklyDigest();
-    const iv = setInterval(() => { checkHydra(); checkWeeklyDigest(); }, 20000);
+    const iv = setInterval(() => { checkWeeklyDigest(); }, 20000);
     timers.current.push(iv);
     return () => {
       timers.current.forEach((t) => { clearTimeout(t); clearInterval(t); });
@@ -290,19 +257,6 @@ export function useLifeOS() {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncMode]);
-
-  function askNotif() {
-    if (typeof Notification === "undefined") { toast("Notifications", "This browser does not support them."); return; }
-    Notification.requestPermission().then((p) => {
-      setNotif(p);
-      if (p === "granted") {
-        notify("Hydration · Life OS", "Reminders on — a glass at each time you chose.");
-        toast("Notifications", "Enabled for your hydration times.");
-      } else {
-        toast("Notifications", "Declined — reminders will stay as in-app banners.");
-      }
-    }).catch(() => toast("Notifications", "Could not request permission here."));
-  }
 
   // ---- shared derived data ----
   const now = new Date();
@@ -469,8 +423,8 @@ export function useLifeOS() {
     () => computeVals(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      data, tab, toasts, selDay, chartDist, ssub, nsub, gsub, tsub, libFilter, scope, skillFilter, timeKind, notif,
-      editingMealId, syncMode, flashLanguage, flashDeckId, flashStudy, gridView, weekOffset, horizonDomain, openBookId, openLearningId,
+      data, tab, toasts, selDay, chartDist, ssub, nsub, gsub, tsub, libFilter, scope, timeKind,
+      editingMealId, syncMode, flashLanguage, flashDeckId, editingDeckId, flashStudy, gridView, weekOffset, horizonDomain, openBookId, openLearningId, editingLearningId,
     ],
   );
 
@@ -480,8 +434,6 @@ export function useLifeOS() {
     const rec = Object.assign({}, RECOV_DEFAULT, d.recovery[tk] || {});
     const recScore = recovScore(d.recovery[tk]);
     const recovLabel = recScore === null ? "Not logged" : recScore >= 7.5 ? "Good" : recScore >= 5.5 ? "Moderate" : "Low";
-    const glassCount = Math.round(d.hydra.targetL / 0.25);
-    const glassesDone = d.hydra.glasses[tk] || 0;
     const weekDays = Array.from({ length: 7 }, (_, i) => iso(addDays(mon, i)));
     const navMon = addDays(mon, weekOffset * 7);
     const navWeekDays = Array.from({ length: 7 }, (_, i) => iso(addDays(navMon, i)));
@@ -495,7 +447,6 @@ export function useLifeOS() {
       })),
       tab,
       isToday: tab === "today", isNutri: tab === "nutrition", isSprint: tab === "sprint", isGoals: tab === "goals", isTrack: tab === "track", isSettings: tab === "settings",
-      head: { date: fmtLong(now), week: Math.max(1, Math.floor((monday(now) - parseIso(d.startWeek || tk)) / 604800000) + 1) },
       toasts: toasts.map((t) => Object.assign({}, t, {
         st: { pointerEvents: "auto", maxWidth: "420px", background: "var(--text)", color: "var(--bg)", padding: "12px 16px", borderLeft: "3px solid var(--green)", borderRadius: "99px", boxShadow: "0 12px 32px var(--shadow)", animation: "osToast .22s ease-out" },
       })),
@@ -506,7 +457,7 @@ export function useLifeOS() {
     const yKey = iso(yesterday);
     const yesterdayOpen = d.tasks.filter((t) => t.repeat === "daily" && !taskDoneOf(t, yesterday));
     const todayLearning = d.learnings.filter((l) => l.date === tk)[0];
-    const curBook = d.books.filter((b) => b.status === "Reading")[0] || d.books.filter((b) => b.status === "To read")[0] || d.books[0];
+    const readingBooks = d.books.filter((b) => b.status === "Reading");
     const checkinText = (() => {
       const s = recScore === null ? "—" : recScore.toFixed(1);
       const lines = RECOV.map((m) => m.label + ": " + (rec[m.k] === null || rec[m.k] === undefined ? "—" : rec[m.k] + "/10"));
@@ -514,14 +465,8 @@ export function useLifeOS() {
     })();
     v.today = {
       headline: TYPES[type] + " · " + openTasks + (openTasks === 1 ? " task" : " tasks") + " left to close" + (recScore === null ? " · check-in not filled in yet." : " · form " + recScore.toFixed(1) + "/10."),
-      formItems: RECOV.map((m) => ({ label: m.short, val: rec[m.k] === null || rec[m.k] === undefined ? "—" : rec[m.k] })),
-      formAdvice: recScore === null ? "Nothing rated today — six quick sliders and you have your number."
-        : recScore >= 7.5 ? "Green light: full intensity on today’s session."
-        : recScore >= 5.5 ? "Fine to train with volume cut by about 20 %."
-        : "Load is not being absorbed: active rest or technique only.",
       checkinLabel: recScore === null ? "Fill in the check-in →" : "Adjust the check-in →",
       goCheckin: () => { setTab("sprint"); setSsub("checkin"); },
-      goReading: () => { setTab("track"); setTsub("books"); },
       share: () => {
         const payload = { title: "Daily check-in", text: checkinText };
         if (typeof navigator !== "undefined" && navigator.share) {
@@ -533,12 +478,11 @@ export function useLifeOS() {
         }
         try { window.open("sms:?body=" + encodeURIComponent(checkinText), "_self"); } catch { /* ignore */ }
       },
-      bookTitle: curBook ? curBook.title : "Nothing on the go",
-      bookAuthor: curBook ? (curBook.author || "—") + " · " + curBook.status : "Add a book under Tracking → Reading",
-      bookRating: curBook ? (curBook.rating || 0) + " / 10" : "",
-      bookStars: curBook ? Array.from({ length: 10 }, (_, i) => ({ st: { font: "700 18px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: i < (curBook.rating || 0) ? "var(--red)" : "var(--line)" } })) : [],
-      bookNote: curBook ? (curBook.review || "No note yet — tap through to write one.") : "",
-      recovLabel, scoreTxt: recScore === null ? "—" : recScore.toFixed(1),
+      readingBooks: readingBooks.map((b) => ({
+        key: b.id, t: b.title, cover: b.cover || null,
+        open: () => { setTab("track"); setTsub("books"); setOpenBookId(b.id); },
+      })),
+      readingEmpty: readingBooks.length ? "" : "Nothing marked “Reading” yet — add one under Tracking → Reading.",
       tasks: todayTasks.map((t) => {
         const done = taskDoneOf(t, now);
         const isDaily = t.repeat === "daily";
@@ -597,10 +541,10 @@ export function useLifeOS() {
     const lf = libFilter;
     const shopItems = shopAgg(d);
     v.nutri = {
-      subs: [["day", "Day"], ["meals", "Meals"], ["groceries", "Groceries"], ["hydration", "Hydration"]].map((s) => ({ key: s[0], label: s[1], st: chip(nsub === s[0]), pick: () => setNsub(s[0]) })),
-      isDay: nsub === "day", isLib: nsub === "meals", isShop: nsub === "groceries", isHydra: nsub === "hydration",
+      subs: [["day", "Day"], ["meals", "Meals"], ["groceries", "Groceries"]].map((s) => ({ key: s[0], label: s[1], st: chip(nsub === s[0]), pick: () => setNsub(s[0]) })),
+      isDay: nsub === "day", isLib: nsub === "meals", isShop: nsub === "groceries",
       weekNav: {
-        label: weekOffset === 0 ? "This week" : (weekOffset > 0 ? "+" + weekOffset + " week" + (weekOffset > 1 ? "s" : "") : weekOffset + " week" + (weekOffset < -1 ? "s" : "")),
+        label: fmtShort(navWeekDays[0]) + " – " + fmtShort(navWeekDays[6]),
         isThisWeek: weekOffset === 0,
         prev: () => { setWeekOffset(weekOffset - 1); setSelDay(iso(addDays(navMon, -7))); },
         next: () => { setWeekOffset(weekOffset + 1); setSelDay(iso(addDays(navMon, 7))); },
@@ -715,24 +659,6 @@ export function useLifeOS() {
         ref("sName").current.value = ""; ref("sQty").current.value = "";
         toast("Groceries", n + " added to the list.");
       },
-      waterTarget: d.hydra.targetL, glassCount, drunk: (glassesDone * 0.25).toFixed(2),
-      waterUp: () => mut((x) => { x.hydra.targetL = Math.round(Math.min(5, x.hydra.targetL + 0.25) * 100) / 100; }),
-      waterDown: () => mut((x) => { x.hydra.targetL = Math.round(Math.max(1.5, x.hydra.targetL - 0.25) * 100) / 100; }),
-      nextRemind: nextReminder(d) ? "Next reminder at " + nextReminder(d) + "." : "All of today’s reminders are done.",
-      slots: d.hydra.slots.map((s) => ({
-        t: s, st: { border: "1px solid var(--green-tint-line)", background: "var(--green-tint-bg)", color: "var(--green-mid)", padding: "6px 11px", borderRadius: "99px", font: "700 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", whiteSpace: "nowrap" },
-        remove: () => { mut((x) => { x.hydra.slots = x.hydra.slots.filter((y) => y !== s); }); toast("Reminders", s + " removed."); },
-      })),
-      addSlot: (e) => {
-        e.preventDefault();
-        const v2 = ref("slot").current && ref("slot").current.value;
-        if (!v2) return;
-        mut((x) => { if (x.hydra.slots.indexOf(v2) < 0) { x.hydra.slots.push(v2); x.hydra.slots.sort(); } });
-        toast("Reminders", "Reminder added at " + v2 + ".");
-      },
-      notifStatus: notif === "granted" ? "Allowed — a notification fires at each time while a tab is open." : notif === "denied" ? "Blocked by the browser: reminders show as in-app banners." : notif === "unsupported" ? "Not supported by this browser — in-app banners only." : "Not yet allowed.",
-      askLabel: notif === "granted" ? "Notifications on" : "Enable notifications",
-      askNotif: () => askNotif(),
     };
 
     // ---- SPRINT ----
@@ -916,64 +842,30 @@ export function useLifeOS() {
       horizonDetail: horizonDomain
         ? Object.assign({}, domainsComputed.filter((dm) => dm.key === horizonDomain)[0], { back: () => setHorizonDomain(null) })
         : null,
-      scopeTabs: ["daily", "weekly", "monthly", "once"].map((s) => ({ key: s, label: { daily: "Daily", weekly: "Weekly", monthly: "Monthly", once: "One-off" }[s], st: chip(scope === s), pick: () => setScope(s) })),
-      showDailyGrid: scope === "daily",
-      showWeeklyGrid: scope === "weekly",
-      // Compact per-task summaries — the full 365-cell grid is big, so it
-      // only renders on its own page (gridView below), opened from here.
-      dailySummaries: d.tasks.filter((t) => t.repeat === "daily").map((t) => {
-        let streakStart = (t.done || {})[tk] ? 0 : 1;
-        let streak = 0;
-        for (let i = streakStart; ; i++) {
-          const k = iso(addDays(now, -i));
-          if ((t.done || {})[k]) streak++; else break;
-        }
-        const isTimed = !!t.timeTarget;
-        const yearTotal = isTimed ? Object.keys(t.timeLog || {}).filter((k) => k.slice(0, 4) === tk.slice(0, 4)).reduce((a, k) => a + t.timeLog[k], 0) : 0;
-        return {
-          key: t.id, title: t.title,
-          streakTxt: isTimed
-            ? Math.floor(yearTotal / 60) + "h " + (yearTotal % 60) + "min this year"
-            : (streak ? streak + "-day streak" : "No streak yet"),
-          view: () => setGridView({ kind: "daily", taskId: t.id }),
-        };
-      }),
-      viewWeeklyGrid: () => setGridView({ kind: "weekly" }),
+      scopeTabs: ["daily", "weekly", "monthly"].map((s) => ({ key: s, label: { daily: "Daily", weekly: "Weekly", monthly: "Monthly" }[s], st: chip(scope === s), pick: () => setScope(s) })),
       gridView: (() => {
-        if (!gridView) return null;
-        if (gridView.kind === "daily") {
-          const t = d.tasks.filter((x) => x.id === gridView.taskId)[0];
-          if (!t) return null;
-          const start = monday(addDays(now, -364));
-          const cells = Array.from({ length: 371 }, (_, i) => {
-            const date = addDays(start, i);
-            const k = iso(date);
-            const future = date > now;
-            const done = !future && !!(t.done || {})[k];
-            return { key: k, future, done, title: future ? "" : fmtShort(k) + " — " + (done ? "done" : "missed") };
-          });
-          const isTimed = !!t.timeTarget;
-          const timeLog = t.timeLog || {};
-          const totalMin = Object.keys(timeLog).reduce((a, k) => a + timeLog[k], 0);
-          const yearMin = Object.keys(timeLog).filter((k) => k.slice(0, 4) === tk.slice(0, 4)).reduce((a, k) => a + timeLog[k], 0);
-          const fmtHM = (m) => Math.floor(m / 60) + "h " + (m % 60) + "min";
-          return {
-            kind: "daily", title: t.title, grid: { cells, from: fmtShort(iso(start)), to: fmtShort(tk) }, back: () => setGridView(null),
-            isTimed, timeTarget: t.timeTarget || 0, todayMinutes: timeLog[tk] || 0,
-            statsLabel: isTimed ? fmtHM(totalMin) + " total · " + fmtHM(yearMin) + " this year" : "",
-            logMinutes: isTimed ? (mins) => logTaskTime(t.id, tk, mins) : null,
-          };
-        }
-        const weeklyTasks = d.tasks.filter((t) => t.repeat === "weekly");
-        const curMon = monday(now);
-        const cells = Array.from({ length: 52 }, (_, i) => {
-          const wkStart = addDays(curMon, -(51 - i) * 7);
-          const wk = weekKey(wkStart);
-          const future = wkStart > curMon;
-          const pct = !future && weeklyTasks.length ? weeklyTasks.filter((t) => !!(t.done || {})[wk]).length / weeklyTasks.length : 0;
-          return { key: wk, future, pct, title: future ? "" : "Week of " + fmtShort(iso(wkStart)) + " — " + (weeklyTasks.length ? Math.round(pct * 100) + "% of weekly tasks" : "no weekly tasks yet") };
+        if (!gridView || gridView.kind !== "daily") return null;
+        const t = d.tasks.filter((x) => x.id === gridView.taskId)[0];
+        if (!t) return null;
+        const start = monday(addDays(now, -364));
+        const cells = Array.from({ length: 371 }, (_, i) => {
+          const date = addDays(start, i);
+          const k = iso(date);
+          const future = date > now;
+          const done = !future && !!(t.done || {})[k];
+          return { key: k, future, done, title: future ? "" : fmtShort(k) + " — " + (done ? "done" : "missed") };
         });
-        return { kind: "weekly", title: "Weekly tasks", grid: { cells, from: fmtShort(iso(addDays(curMon, -51 * 7))), to: fmtShort(iso(curMon)) }, back: () => setGridView(null) };
+        const isTimed = !!t.timeTarget;
+        const timeLog = t.timeLog || {};
+        const totalMin = Object.keys(timeLog).reduce((a, k) => a + timeLog[k], 0);
+        const yearMin = Object.keys(timeLog).filter((k) => k.slice(0, 4) === tk.slice(0, 4)).reduce((a, k) => a + timeLog[k], 0);
+        const fmtHM = (m) => Math.floor(m / 60) + "h " + (m % 60) + "min";
+        return {
+          kind: "daily", title: t.title, grid: { cells, from: fmtShort(iso(start)), to: fmtShort(tk) }, back: () => setGridView(null),
+          isTimed, timeTarget: t.timeTarget || 0, todayMinutes: timeLog[tk] || 0,
+          statsLabel: isTimed ? fmtHM(totalMin) + " total · " + fmtHM(yearMin) + " this year" : "",
+          logMinutes: isTimed ? (mins) => logTaskTime(t.id, tk, mins) : null,
+        };
       })(),
       tasks: d.tasks.filter((t) => t.repeat === scope).map((t) => {
         const done = taskDoneOf(t, now);
@@ -997,15 +889,14 @@ export function useLifeOS() {
         const v2 = (ref("gTask").current.value || "").trim();
         if (!v2) return;
         const repeat = ref("gRepeat").current.value, goal = ref("gGoal").current.value || null;
-        const date = repeat === "once" ? ref("gDate").current.value || tk : tk;
         const timeTargetRaw = ref("gTimeTarget").current && ref("gTimeTarget").current.value;
         const timeTarget = repeat === "daily" && timeTargetRaw ? Math.max(0, Math.round(+timeTargetRaw)) : 0;
         mut((x) => {
-          const task = { id: "t" + Date.now(), title: v2, goal, repeat, date, done: {} };
+          const task = { id: "t" + Date.now(), title: v2, goal, repeat, date: tk, done: {} };
           if (timeTarget) { task.timeTarget = timeTarget; task.timeLog = {}; }
           x.tasks.push(task);
         });
-        ref("gTask").current.value = ""; if (ref("gDate").current) ref("gDate").current.value = ""; if (ref("gTimeTarget").current) ref("gTimeTarget").current.value = "";
+        ref("gTask").current.value = ""; if (ref("gTimeTarget").current) ref("gTimeTarget").current.value = "";
         setScope(repeat);
         toast("To-do", repeat === "daily" ? "Added — it will show on Today every day." : REPEATS[repeat] + " task added.");
       },
@@ -1025,7 +916,6 @@ export function useLifeOS() {
     };
 
     // ---- TRACKING ----
-    const sf = skillFilter;
     const booksComputed = d.books.map((b) => {
         const cyc = { "To read": "Reading", Reading: "Finished", Finished: "To read" };
         const c = b.status === "Reading" ? "var(--green)" : b.status === "Finished" ? "var(--hint)" : "var(--red)";
@@ -1072,8 +962,8 @@ export function useLifeOS() {
       });
 
     v.track = {
-      subs: [["books", "Reading"], ["skills", "Skills"], ["learnings", "Learnings"], ["flashcards", "Flashcards"]].map((s) => ({ key: s[0], label: s[1], st: chip(tsub === s[0]), pick: () => setTsub(s[0]) })),
-      isBooks: tsub === "books", isSkills: tsub === "skills", isLearn: tsub === "learnings", isFlash: tsub === "flashcards",
+      subs: [["books", "Reading"], ["learnings", "Learnings"], ["flashcards", "Flashcards"]].map((s) => ({ key: s[0], label: s[1], st: chip(tsub === s[0]), pick: () => setTsub(s[0]) })),
+      isBooks: tsub === "books", isLearn: tsub === "learnings", isFlash: tsub === "flashcards",
       bookMeta: (() => {
         const f = d.books.filter((b) => b.status === "Finished").length, r = d.books.filter((b) => b.status === "Reading").length;
         return f + " finished · " + r + " reading · " + d.books.length + " total";
@@ -1090,27 +980,6 @@ export function useLifeOS() {
       bookDetail: openBookId
         ? Object.assign({}, booksComputed.filter((b) => b.key === openBookId)[0], { back: () => setOpenBookId(null) })
         : null,
-      skillTabs: ["All", "Learned", "Planned"].map((f) => ({ label: f, st: chip(sf === f), pick: () => setSkillFilter(f) })),
-      skills: d.skills.filter((s) => sf === "All" || (sf === "Learned" ? s.status === "learned" : s.status === "planned"))
-        .sort((a, b) => (a.status === b.status ? ((a.date || "") < (b.date || "") ? 1 : -1) : a.status === "planned" ? -1 : 1))
-        .map((s) => ({
-          key: s.id, n: s.name, note: s.note || "No note.", statusTxt: s.status === "learned" ? "Learned" : "Planned",
-          nameSt: { flex: 1, minWidth: 0, font: "700 16px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" },
-          tag: tag(s.status === "learned" ? "var(--green-mid)" : "var(--red-dark)"),
-          dateTxt: (s.status === "learned" ? "Learned on " : "Target ") + (s.date ? fmtFull(s.date) : "—"),
-          cycle: () => { mut((x) => { const q = x.skills.filter((y) => y.id === s.id)[0]; q.status = q.status === "learned" ? "planned" : "learned"; if (q.status === "learned") q.date = tk; }); },
-          remove: () => { mut((x) => { x.skills = x.skills.filter((y) => y.id !== s.id); }); toast("Skills", "“" + s.name + "” deleted."); },
-        })),
-      skillEmpty: d.skills.length ? "" : "Nothing here yet — add a skill on the right.",
-      addSkill: (e) => {
-        e.preventDefault();
-        const n = (ref("skName").current.value || "").trim();
-        if (!n) return;
-        const status = ref("skStatus").current.value, date = ref("skDate").current.value || tk;
-        mut((x) => { x.skills.unshift({ id: "sk" + Date.now(), name: n, note: (ref("skNote").current.value || "").trim(), status, date }); });
-        ref("skName").current.value = ""; ref("skNote").current.value = ""; ref("skDate").current.value = "";
-        toast("Skills", "“" + n + "” saved as " + (status === "learned" ? "learned" : "planned") + ".");
-      },
       learnDate: fmtLong(now),
       learnCount: d.learnings.length + (d.learnings.length === 1 ? " entry" : " entries"),
       learnings: d.learnings.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).map((l) => {
@@ -1130,6 +999,19 @@ export function useLifeOS() {
           key: l.id, title, date: fmtFull(l.date), text: l.text, textSt: prose(15),
           back: () => setOpenLearningId(null),
           remove: () => { mut((x) => { x.learnings = x.learnings.filter((y) => y.id !== l.id); }); setOpenLearningId(null); },
+          editing: editingLearningId === l.id,
+          edit: () => setEditingLearningId(l.id),
+          cancelEdit: () => setEditingLearningId(null),
+          refTitle: ref("elTitle_" + l.id), refText: ref("elText_" + l.id),
+          saveEdit: (e) => {
+            e.preventDefault();
+            const newTitle = (ref("elTitle_" + l.id).current.value || "").trim();
+            const newText = (ref("elText_" + l.id).current.value || "").trim();
+            if (!newTitle) { toast("Learnings", "Give it a short title."); return; }
+            mut((x) => { const q = x.learnings.filter((y) => y.id === l.id)[0]; if (q) { q.title = newTitle; q.text = newText; } });
+            setEditingLearningId(null);
+            toast("Learnings", "Updated.");
+          },
         };
       })(),
       learnEmpty: d.learnings.length ? "" : "Nothing recorded yet — write today’s learning on the left.",
@@ -1221,7 +1103,7 @@ export function useLifeOS() {
             language: flashLanguage,
             backToLanguages: () => setFlashLanguage(null),
             decks: decksInLang.map((dk) => ({
-              key: dk.id, name: dk.name, total: cardsOf(dk.id).length, due: dueOf(dk.id),
+              key: dk.id, name: dk.name, language: dk.language || "Other", total: cardsOf(dk.id).length, due: dueOf(dk.id),
               open: () => setFlashDeckId(dk.id),
               studyDue: () => startStudy(dk.id, true),
               remove: () => {
@@ -1230,6 +1112,20 @@ export function useLifeOS() {
                   x.flashCards = (x.flashCards || []).filter((c) => c.deckId !== dk.id);
                 });
                 toast("Flashcards", "“" + dk.name + "” deck deleted.");
+              },
+              editing: editingDeckId === dk.id,
+              edit: () => setEditingDeckId(dk.id),
+              cancelEdit: () => setEditingDeckId(null),
+              refName: ref("edk_name_" + dk.id), refLanguage: ref("edk_lang_" + dk.id),
+              saveEdit: (e) => {
+                e.preventDefault();
+                const newName = (ref("edk_name_" + dk.id).current.value || "").trim();
+                const newLanguage = (ref("edk_lang_" + dk.id).current.value || "").trim();
+                if (!newName || !newLanguage) { toast("Flashcards", "Give the deck both a name and a language."); return; }
+                mut((x) => { const q = (x.flashDecks || []).filter((y) => y.id === dk.id)[0]; if (q) { q.name = newName; q.language = newLanguage; } });
+                setEditingDeckId(null);
+                if (newLanguage !== flashLanguage) setFlashLanguage(newLanguage);
+                toast("Flashcards", "Deck updated.");
               },
             })),
             decksEmpty: decksInLang.length ? "" : "No deck yet in " + flashLanguage + " — add one on the right.",
@@ -1348,8 +1244,6 @@ export function useLifeOS() {
 
   return {
     vals, ref, syncMode, exportData, importData, themePref, setThemePref,
-    hydrationSlots: data.hydra.slots,
-    onceTasks: data.tasks.filter((t) => t.repeat === "once" && !taskDoneOf(t, now)).map((t) => ({ id: t.id, title: t.title, date: t.date || tk })),
     resetDemo: () => {
       const s = buildSeed(HYDRATION_TARGET_L);
       dataRef.current = s;

@@ -26,8 +26,8 @@ function Splash({ onDone }) {
 }
 
 export default function App() {
-  const { vals, ref, exportData, importData, resetDemo, syncMode, themePref, setThemePref, hydrationSlots, onceTasks } = useLifeOS();
-  const push = usePush(hydrationSlots, onceTasks);
+  const { vals, ref, exportData, importData, resetDemo, syncMode, themePref, setThemePref } = useLifeOS();
+  const push = usePush();
   const [showSplash, setShowSplash] = useState(true);
 
   return (
@@ -37,12 +37,6 @@ export default function App() {
       <ToastStack toasts={vals.toasts} />
 
       <div className="shell">
-        <div className="week-bar">
-          <div className="week">Week {vals.head.week}</div>
-          <div className="date">{vals.head.date}</div>
-        </div>
-        <div className="week-rule" />
-
         {vals.isToday && <TodayTab today={vals.today} getRef={ref} />}
         {vals.isNutri && <NutritionTab nutri={vals.nutri} getRef={ref} />}
         {vals.isSprint && <SprintTab sprint={vals.sprint} getRef={ref} />}

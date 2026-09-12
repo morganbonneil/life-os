@@ -93,7 +93,7 @@ export const DOMAINS = [
   { id: "freedom", name: "Freedom / travel" },
 ];
 
-export const REPEATS = { daily: "Every day", weekly: "Every week", monthly: "Every month", once: "One-off" };
+export const REPEATS = { daily: "Every day", weekly: "Every week", monthly: "Every month" };
 
 // Flashcards — a simple Leitner-style scheduler: 5 boxes, each with a longer
 // gap before the card is due again. A wrong answer always sends a card back

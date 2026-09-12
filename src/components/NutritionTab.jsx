@@ -243,35 +243,6 @@ export default function NutritionTab({ nutri, getRef }) {
         </div>
       )}
 
-      {nutri.isHydra && (
-        <div className="grid">
-          <section>
-            <div className="section-title green">Daily target</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-              <button onClick={nutri.waterDown} style={{ border: "1px solid var(--input-line)", background: "transparent", width: 30, height: 30, borderRadius: 99, font: "700 16px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", padding: 0 }}>−</button>
-              <span style={{ font: "800 30px/1 'Plus Jakarta Sans',system-ui,sans-serif" }}>{nutri.waterTarget} L</span>
-              <button onClick={nutri.waterUp} style={{ border: "1px solid var(--input-line)", background: "transparent", width: 30, height: 30, borderRadius: 99, font: "700 16px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", padding: 0 }}>+</button>
-              <span style={{ font: "700 13px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)" }}>that is {nutri.glassCount} glasses of 250 ml</span>
-            </div>
-            <div style={{ font: "700 14px/1.5 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 14 }}>Today — {nutri.drunk} L. {nutri.nextRemind}</div>
-          </section>
-
-          <section>
-            <div className="section-title red">Reminders</div>
-            <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 16 }}>
-              {nutri.slots.map((s) => (
-                <button key={s.t} onClick={s.remove} style={s.st}>{s.t} ✕</button>
-              ))}
-            </div>
-            <form className="inline-form" onSubmit={nutri.addSlot}>
-              <input ref={getRef("slot")} type="time" style={{ border: 0, borderBottom: "1px solid var(--input-line)", background: "transparent", padding: "7px 2px", font: "700 14px/1.2 'Plus Jakarta Sans',system-ui,sans-serif" }} />
-              <button type="submit" className="btn btn-small">Add a reminder</button>
-            </form>
-            <div className="hint" style={{ marginTop: 18 }}>{nutri.notifStatus}</div>
-            <button onClick={nutri.askNotif} className="btn btn-small" style={{ marginTop: 10 }}>{nutri.askLabel}</button>
-          </section>
-        </div>
-      )}
     </div>
   );
 }
