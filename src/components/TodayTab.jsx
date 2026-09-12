@@ -3,7 +3,7 @@ export default function TodayTab({ today, getRef }) {
     <div>
       <h1 className="page-title">Today</h1>
 
-      <button onClick={today.goCheckin} className="btn btn-dark" style={{ display: "block", width: "100%", padding: "18px", font: "700 17px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", marginBottom: 22 }}>
+      <button onClick={today.goCheckin} className="btn btn-dark" style={{ display: "block", width: "100%", padding: "18px", font: "800 17px/1 'Plus Jakarta Sans',system-ui,sans-serif", marginBottom: 22 }}>
         Check-in
       </button>
 
@@ -20,15 +20,15 @@ export default function TodayTab({ today, getRef }) {
                 >
                   {t.title}
                 </span>
-                <span style={{ display: "block", font: "600 11.5px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)", marginTop: 3 }}>{t.link}</span>
+                <span style={{ display: "block", font: "700 11.5px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 3 }}>{t.link}</span>
                 {t.isTimed && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
                     <input
                       type="number" min="0" defaultValue={t.minutesToday || ""} placeholder="0"
                       onBlur={(e) => t.logMinutes(Math.max(0, Math.round(+e.target.value || 0)))}
-                      style={{ width: 64, border: "1px solid var(--input-line)", borderRadius: 8, padding: "6px 8px", font: "600 14px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", background: "var(--bg)", color: "var(--text)" }}
+                      style={{ width: 64, border: "1px solid var(--input-line)", borderRadius: 8, padding: "6px 8px", font: "700 14px/1 'Plus Jakarta Sans',system-ui,sans-serif", background: "var(--bg)", color: "var(--text)" }}
                     />
-                    <span style={{ font: "600 12px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)" }}>min today · target {t.timeTarget} min</span>
+                    <span style={{ font: "700 12px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)" }}>min today · target {t.timeTarget} min</span>
                   </div>
                 )}
               </span>
@@ -41,11 +41,11 @@ export default function TodayTab({ today, getRef }) {
 
           {today.yesterday.tasks.length > 0 && (
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--line2)" }}>
-              <div style={{ font: "600 11.5px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--hint)" }}>Didn’t get to it? · {today.yesterday.date}</div>
+              <div style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--hint)" }}>Didn’t get to it? · {today.yesterday.date}</div>
               {today.yesterday.tasks.map((t) => (
                 <div key={t.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", cursor: "pointer" }} onClick={t.toggle}>
                   <span style={t.box} />
-                  <span style={{ flex: 1, minWidth: 0, font: "600 14px/1.35 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif" }}>{t.title}</span>
+                  <span style={{ flex: 1, minWidth: 0, font: "700 14px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" }}>{t.title}</span>
                 </div>
               ))}
             </div>
@@ -71,7 +71,7 @@ export default function TodayTab({ today, getRef }) {
 
         <section>
           <div className="section-title green">Complementary to-do</div>
-          <div style={{ font: "600 12.5px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", marginBottom: 10 }}>Little things that pop up — no due date, no obligation to do them today.</div>
+          <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginBottom: 10 }}>Little things that pop up — no due date, no obligation to do them today.</div>
           <form className="inline-form" onSubmit={today.notes.add}>
             <input ref={getRef("quickNote")} placeholder="Don’t forget to…" />
             <button type="submit" className="btn btn-small">Add</button>
@@ -79,7 +79,7 @@ export default function TodayTab({ today, getRef }) {
           {today.notes.items.map((n) => (
             <div key={n.key} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", borderBottom: "1px solid var(--line2)" }}>
               <span onClick={n.remove} title="Done — clear it" style={{ flex: "none", width: 17, height: 17, marginTop: 2, borderRadius: 9, border: "1px solid var(--input-line)", cursor: "pointer" }} />
-              <span style={{ flex: 1, minWidth: 0, font: "600 14px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", whiteSpace: "pre-wrap" }}>{n.text}</span>
+              <span style={{ flex: 1, minWidth: 0, font: "700 14px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", whiteSpace: "pre-wrap" }}>{n.text}</span>
             </div>
           ))}
           <div className="rows-empty">{today.notes.empty}</div>

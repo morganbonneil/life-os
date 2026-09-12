@@ -50,7 +50,7 @@ export default function SettingsTab({
           )}
           {push?.supported !== false && (
             <>
-              <div style={{ font: "600 13.5px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", marginTop: 16 }}>
+              <div style={{ font: "700 13.5px/1.55 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 16 }}>
                 {push?.status === "subscribed"
                   ? "On — hydration reminders and the Sunday form summary can reach this device even when Life OS is closed."
                   : "Off — reminders only show while the app is open. Turn this on to get them as real phone notifications."}
@@ -74,7 +74,7 @@ export default function SettingsTab({
 
         <section>
           <div className="section-title green">Data &amp; backup</div>
-          <div style={{ font: "600 13.5px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", marginTop: 16 }}>
+          <div style={{ font: "700 13.5px/1.55 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 16 }}>
             {syncMode === "cloud" && "Cloud sync is on — saved to your account, kept across devices."}
             {syncMode === "local" && "Saved on this device only — cloud sync isn’t available here."}
             {syncMode === "checking" && "Checking sync status…"}

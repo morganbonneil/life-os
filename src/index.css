@@ -1,84 +1,83 @@
-/* Apple HIG-style palette: systemGroupedBackground page with card-on-card
-   grouped panels, systemBlue as the primary accent, systemRed as the
-   secondary one — the classic Apple two-tone action/alert pairing. */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,500;0,600;0,700;0,800;1,600&display=swap");
+
 :root {
-  --bg: #f2f2f7;
-  --text: #000000;
-  --text-hover: #000000;
-  --muted: rgba(60, 60, 67, .6);
-  --faint: rgba(60, 60, 67, .3);
-  --hint: rgba(60, 60, 67, .6);
-  --line: rgba(60, 60, 67, .29);
-  --line2: rgba(60, 60, 67, .16);
-  --input-line: rgba(60, 60, 67, .36);
-  --green: #007aff;
-  --green-hover: #0067d6;
-  --green-dark: #0040a0;
-  --green-mid: #0071e3;
-  --green-tint-bg: rgba(0, 122, 255, .12);
-  --green-tint-line: rgba(0, 122, 255, .35);
-  --red: #ff3b30;
-  --red-dark: #d70015;
-  --red-tint-line: rgba(255, 59, 48, .35);
-  --panel: #ffffff;
-  --pill-hover: rgba(120, 120, 128, .12);
-  --streak-mid1: #8fc3ff;
-  --streak-mid2: #3d94ff;
-  --shadow: rgba(0, 0, 0, .08);
+  --bg: #ffffff;
+  --text: #16163d;
+  --text-hover: #0f0f2c;
+  --muted: #6b6b93;
+  --faint: #9998bf;
+  --hint: #8584ac;
+  --line: #e5e3f3;
+  --line2: #ece9f8;
+  --input-line: #c9c6e3;
+  --green: #1b1b4f;
+  --green-hover: #26265e;
+  --green-dark: #0f0f35;
+  --green-mid: #2d2d74;
+  --green-tint-bg: #eae8f6;
+  --green-tint-line: #d6d3ee;
+  --red: var(--green);
+  --red-dark: var(--green-dark);
+  --red-tint-line: var(--green-tint-line);
+  --panel: #edebf9;
+  --pill-hover: #e3e1f2;
+  --streak-mid1: #8a8ac4;
+  --streak-mid2: #4a4a96;
+  --shadow: rgba(27, 27, 79, .14);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #000000;
-    --text: #ffffff;
+    --bg: #0e0e2e;
+    --text: #ecebfa;
     --text-hover: #ffffff;
-    --muted: rgba(235, 235, 245, .6);
-    --faint: rgba(235, 235, 245, .3);
-    --hint: rgba(235, 235, 245, .6);
-    --line: rgba(84, 84, 88, .6);
-    --line2: rgba(84, 84, 88, .36);
-    --input-line: rgba(84, 84, 88, .65);
-    --green: #0a84ff;
-    --green-hover: #3395ff;
-    --green-dark: #6cb3ff;
-    --green-mid: #409cff;
-    --green-tint-bg: rgba(10, 132, 255, .18);
-    --green-tint-line: rgba(10, 132, 255, .4);
-    --red: #ff453a;
-    --red-dark: #ff6961;
-    --red-tint-line: rgba(255, 69, 58, .4);
-    --panel: #1c1c1e;
-    --pill-hover: rgba(120, 120, 128, .24);
-    --streak-mid1: #3a6ea8;
-    --streak-mid2: #1f6fd1;
+    --muted: #a8a6d0;
+    --faint: #7c7aae;
+    --hint: #9391c4;
+    --line: #2c2c5c;
+    --line2: #23234c;
+    --input-line: #3e3e72;
+    --green: #8686e6;
+    --green-hover: #9797ee;
+    --green-dark: #dad8fb;
+    --green-mid: #a6a4f0;
+    --green-tint-bg: #23234c;
+    --green-tint-line: #34346a;
+    --red: var(--green);
+    --red-dark: var(--green-dark);
+    --red-tint-line: var(--green-tint-line);
+    --panel: #17173d;
+    --pill-hover: #23234c;
+    --streak-mid1: #4a4a8c;
+    --streak-mid2: #5f5fb0;
     --shadow: rgba(0, 0, 0, .5);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #000000;
-  --text: #ffffff;
+  --bg: #0e0e2e;
+  --text: #ecebfa;
   --text-hover: #ffffff;
-  --muted: rgba(235, 235, 245, .6);
-  --faint: rgba(235, 235, 245, .3);
-  --hint: rgba(235, 235, 245, .6);
-  --line: rgba(84, 84, 88, .6);
-  --line2: rgba(84, 84, 88, .36);
-  --input-line: rgba(84, 84, 88, .65);
-  --green: #0a84ff;
-  --green-hover: #3395ff;
-  --green-dark: #6cb3ff;
-  --green-mid: #409cff;
-  --green-tint-bg: rgba(10, 132, 255, .18);
-  --green-tint-line: rgba(10, 132, 255, .4);
-  --red: #ff453a;
-  --red-dark: #ff6961;
-  --red-tint-line: rgba(255, 69, 58, .4);
-  --panel: #1c1c1e;
-  --pill-hover: rgba(120, 120, 128, .24);
-  --streak-mid1: #3a6ea8;
-  --streak-mid2: #1f6fd1;
+  --muted: #a8a6d0;
+  --faint: #7c7aae;
+  --hint: #9391c4;
+  --line: #2c2c5c;
+  --line2: #23234c;
+  --input-line: #3e3e72;
+  --green: #8686e6;
+  --green-hover: #9797ee;
+  --green-dark: #dad8fb;
+  --green-mid: #a6a4f0;
+  --green-tint-bg: #23234c;
+  --green-tint-line: #34346a;
+  --red: var(--green);
+  --red-dark: var(--green-dark);
+  --red-tint-line: var(--green-tint-line);
+  --panel: #17173d;
+  --pill-hover: #23234c;
+  --streak-mid1: #4a4a8c;
+  --streak-mid2: #5f5fb0;
   --shadow: rgba(0, 0, 0, .5);
   color-scheme: dark;
 }
@@ -89,8 +88,8 @@ html, body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  font-weight: 600;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-weight: 700;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -119,30 +118,24 @@ input, select, textarea, button {
   cursor: pointer; transition: opacity .5s ease;
 }
 .splash span {
-  font: 700 26px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; letter-spacing: -.01em;
+  font: 800 26px/1.3 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: -.01em;
 }
 .splash-hide { opacity: 0; pointer-events: none; }
 
 .app { min-height: 100vh; background: var(--bg); padding: 0 0 calc(96px + env(safe-area-inset-bottom)); }
 
 /* ---- bottom nav ---- */
-/* A translucent "material" tab bar — Liquid Glass-style vibrancy over
-   whatever content scrolls beneath it, with a hairline (not a heavy rule)
-   separating it from the content, the way iOS tab bars do. */
 .bottom-nav {
   position: fixed; left: 0; right: 0; bottom: 0;
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: .5px solid var(--line);
+  background: var(--bg); border-top: 3px solid var(--text);
   display: flex; z-index: 40;
   padding-bottom: env(safe-area-inset-bottom);
 }
 .bottom-nav button {
-  border: 0; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  border: 0; cursor: pointer; font-family: "Plus Jakarta Sans", system-ui, sans-serif;
 }
 .bottom-nav button .num {
-  display: block; font: 600 9.5px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  display: block; font: 700 9.5px/1 "Plus Jakarta Sans", system-ui, sans-serif;
   letter-spacing: .16em; color: var(--faint);
 }
 .bottom-nav button .label {
@@ -156,11 +149,11 @@ input, select, textarea, button {
   pointer-events: none; z-index: 60; padding: 0 16px;
 }
 .toast-kicker {
-  font: 600 11.5px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  font: 700 11.5px/1 "Plus Jakarta Sans", system-ui, sans-serif;
   letter-spacing: .18em; text-transform: uppercase; opacity: .6;
 }
 .toast-msg {
-  display: block; font: 600 14.5px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; margin-top: 5px;
+  display: block; font: 700 14.5px/1.35 "Plus Jakarta Sans", system-ui, sans-serif; margin-top: 5px;
 }
 
 /* ---- shell / header ---- */
@@ -172,7 +165,7 @@ input, select, textarea, button {
 }
 .backup-row button {
   border: 0; background: transparent; padding: 0; cursor: pointer;
-  font: 600 10.5px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase;
+  font: 700 10.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase;
   color: var(--faint); text-decoration: underline;
 }
 .backup-row button:hover { color: var(--muted); }
@@ -192,12 +185,12 @@ input, select, textarea, button {
 /* ---- flashcards (Tracking > Flashcards > study session) ---- */
 .flashcard {
   margin-top: 16px; min-height: 160px; border: 1px solid var(--green-tint-line); background: var(--green-tint-bg);
-  border-radius: 18px; padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-radius: 20px; padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center;
   cursor: pointer; text-align: center;
 }
 .streak-legend {
   display: flex; align-items: center; gap: 5px; margin-top: 8px;
-  font: 600 11px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: var(--faint);
+  font: 700 11px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint);
 }
 .streak-legend .streak-cell { width: 9px; height: 9px; }
 
@@ -212,15 +205,15 @@ input, select, textarea, button {
 }
 .book-tile-cover-empty {
   display: flex; align-items: center; justify-content: center; border: 1px dashed var(--input-line);
-  color: var(--faint); font: 600 11px/1.2 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; text-align: center; box-shadow: none;
+  color: var(--faint); font: 700 11px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; text-align: center; box-shadow: none;
 }
 .book-tile-title {
-  margin-top: 8px; font: 600 12.5px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; text-align: center;
+  margin-top: 8px; font: 700 12.5px/1.3 "Plus Jakarta Sans", system-ui, sans-serif; text-align: center;
 }
 .book-tile-add .book-tile-cover-empty { color: var(--green-mid); border-color: var(--green-tint-line); }
 
 .page-title {
-  font: 700 40px/1.05 -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif; margin: 26px 0 22px; letter-spacing: -.015em;
+  font: 800 46px/1.02 "Plus Jakarta Sans", system-ui, sans-serif; margin: 26px 0 22px; letter-spacing: -.015em;
 }
 
 .subtabs {
@@ -235,12 +228,12 @@ input, select, textarea, button {
 .grid-wide { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
 .grid-wider { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
 .grid > section {
-  background: var(--panel); border-radius: 18px; padding: 22px 24px;
-  box-shadow: 0 1px 3px var(--shadow);
+  background: var(--panel); border-radius: 24px; padding: 22px 24px;
+  box-shadow: 0 8px 24px var(--shadow);
 }
 
 .section-title {
-  font: 700 14px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; letter-spacing: .03em;
+  font: 800 14px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: .03em;
   border-bottom: 1px solid var(--line); padding-bottom: 7px;
 }
 .section-title.green { color: var(--green); }
@@ -249,41 +242,41 @@ input, select, textarea, button {
   display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
   border-bottom: 1px solid var(--line); padding-bottom: 7px;
 }
-.section-title-row .count { font: 600 11.5px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: var(--faint); white-space: nowrap; }
+.section-title-row .count { font: 700 11.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint); white-space: nowrap; }
 
 /* ---- form fields ---- */
 .field { margin-top: 16px; }
 .field label {
-  display: block; font: 600 11.5px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; letter-spacing: .18em;
+  display: block; font: 700 11.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: .18em;
   text-transform: uppercase; color: var(--hint); margin-bottom: 6px;
 }
 .field input[type="text"], .field input:not([type]), .field input[type="number"],
 .field input[type="date"], .field input[type="time"], .field select {
   width: 100%; border: 0; border-bottom: 1px solid var(--input-line); background: transparent;
-  padding: 8px 2px; font: 600 15px/1.2 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  padding: 8px 2px; font: 700 15px/1.2 "Plus Jakarta Sans", system-ui, sans-serif;
 }
 .field textarea {
   width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 14px;
-  padding: 10px; font: 600 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; resize: vertical;
+  padding: 10px; font: 700 14px/1.5 "Plus Jakarta Sans", system-ui, sans-serif; resize: vertical;
 }
 .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px; margin-top: 18px; }
 .field-grid.narrow { grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); }
 .field-label {
-  display: block; font: 600 11.5px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; letter-spacing: .18em;
+  display: block; font: 700 11.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: .18em;
   text-transform: uppercase; color: var(--hint); margin-bottom: 6px;
 }
 input.ln, select.ln {
   width: 100%; border: 0; border-bottom: 1px solid var(--input-line); background: transparent;
-  padding: 8px 2px; font: 600 15px/1.2 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  padding: 8px 2px; font: 700 15px/1.2 "Plus Jakarta Sans", system-ui, sans-serif;
 }
 
 .inline-form { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.inline-form input { flex: 1; min-width: 140px; border: 0; border-bottom: 1px solid var(--input-line); background: transparent; padding: 7px 2px; font: 600 14px/1.2 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+.inline-form input { flex: 1; min-width: 140px; border: 0; border-bottom: 1px solid var(--input-line); background: transparent; padding: 7px 2px; font: 700 14px/1.2 "Plus Jakarta Sans", system-ui, sans-serif; }
 
 /* ---- buttons ---- */
 .btn {
   border: 1px solid var(--text); background: transparent; padding: 9px 15px; border-radius: 99px;
-  font: 600 13.5px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; cursor: pointer; white-space: nowrap;
+  font: 700 13.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; cursor: pointer; white-space: nowrap;
 }
 .btn:hover { background: var(--pill-hover); }
 .btn-dark { border: 1px solid var(--text); background: var(--text); color: var(--bg); }
@@ -295,24 +288,24 @@ input.ln, select.ln {
 .btn-small { padding: 7px 12px; font-size: 13px; }
 .btn-x {
   border: 0; background: transparent; color: var(--input-line); padding: 0 2px;
-  font: 600 14px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; cursor: pointer;
+  font: 700 14px/1 "Plus Jakarta Sans", system-ui, sans-serif; cursor: pointer;
 }
 .btn-x:hover { color: var(--red-dark); }
-.link-btn { border: 0; background: transparent; padding: 0; color: var(--green-mid); font: 600 12.5px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; cursor: pointer; text-decoration: underline; }
+.link-btn { border: 0; background: transparent; padding: 0; color: var(--green-mid); font: 700 12.5px/1 "Plus Jakarta Sans", system-ui, sans-serif; cursor: pointer; text-decoration: underline; }
 
-.rows-empty { font: 600 12.5px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: var(--faint); margin-top: 12px; }
+.rows-empty { font: 700 12.5px/1.5 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint); margin-top: 12px; }
 
 .row-line { padding: 13px 0; border-bottom: 1px solid var(--line2); }
 
-.hint { font: 600 11.5px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: var(--faint); margin-top: 5px; }
+.hint { font: 700 11.5px/1.5 "Plus Jakarta Sans", system-ui, sans-serif; color: var(--faint); margin-top: 5px; }
 
 /* ---- day cards (nutrition) ---- */
 .day-btn {
   flex: 1 1 84px; border: 1px solid var(--line); background: transparent; color: var(--text);
-  padding: 9px 6px; border-radius: 99px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; text-align: center;
+  padding: 9px 6px; border-radius: 99px; cursor: pointer; font-family: "Plus Jakarta Sans", system-ui, sans-serif; text-align: center;
 }
 .day-btn .dow { display: block; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; opacity: .65; }
-.day-btn .num { display: block; font-size: 17px; font-weight: 700; margin-top: 3px; }
+.day-btn .num { display: block; font-size: 17px; font-weight: 800; margin-top: 3px; }
 .day-btn .tag { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; opacity: .75; }
 
 @media (max-width: 640px) {
