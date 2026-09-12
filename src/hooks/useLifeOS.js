@@ -443,7 +443,7 @@ export function useLifeOS() {
     const v = {
       tabs: TAB_DEFS.map((t) => ({
         num: t[2], label: t[1], pick: () => setTab(t[0]),
-        st: { flex: 1, border: 0, borderTop: "3px solid " + (tab === t[0] ? "var(--green)" : "transparent"), marginTop: "-3px", background: tab === t[0] ? "var(--panel)" : "transparent", color: tab === t[0] ? "var(--text)" : "var(--muted)", padding: "11px 4px 13px", cursor: "pointer", fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif", fontWeight: tab === t[0] ? 800 : 700 },
+        st: { flex: 1, border: 0, background: "transparent", color: tab === t[0] ? "var(--green)" : "var(--faint)", padding: "11px 4px 13px", cursor: "pointer", fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", fontWeight: tab === t[0] ? 600 : 500 },
       })),
       tab,
       isToday: tab === "today", isNutri: tab === "nutrition", isSprint: tab === "sprint", isGoals: tab === "goals", isTrack: tab === "track", isSettings: tab === "settings",
@@ -555,7 +555,7 @@ export function useLifeOS() {
         return {
           key: k, dow: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dd.getDay()], num: dd.getDate(), tag: t === "rest" ? "rest" : "training",
           pick: () => setSelDay(k),
-          st: { flex: "1 1 84px", border: "1px solid " + (on ? "var(--text)" : "var(--line)"), background: on ? "var(--text)" : "transparent", color: on ? "var(--bg)" : "var(--text)", padding: "9px 6px", borderRadius: "99px", cursor: "pointer", fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif", textAlign: "center" },
+          st: { flex: "1 1 84px", border: "1px solid " + (on ? "var(--text)" : "var(--line)"), background: on ? "var(--text)" : "transparent", color: on ? "var(--bg)" : "var(--text)", padding: "9px 6px", borderRadius: "99px", cursor: "pointer", fontFamily: "-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", textAlign: "center" },
         };
       }),
       dayOverride: {
@@ -809,7 +809,7 @@ export function useLifeOS() {
         const openCount = list.filter((g) => !g.done).length;
         return {
           key: dm.id, name: dm.name,
-          head: { font: "800 15px/1.25 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".01em", color: idx % 2 ? "var(--red-dark)" : "var(--green-mid)" },
+          head: { font: "700 15px/1.25 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", letterSpacing: ".01em", color: idx % 2 ? "var(--red-dark)" : "var(--green-mid)" },
           count: list.length ? openCount + " open · " + list.length + " total" : "no goal yet",
           goals: list.map((g) => {
             const prog = goalProgress(d, g, weekKey, monthKey), rel = d.tasks.filter((t) => t.goal === g.id);
@@ -934,7 +934,7 @@ export function useLifeOS() {
           removeCover: () => { mut((x) => { const q = x.books.filter((y) => y.id === b.id)[0]; if (q) q.cover = null; }); },
           stars: Array.from({ length: 10 }, (_, i) => ({
             title: i + 1 + " / 10",
-            st: { border: 0, background: "transparent", padding: "0 1px", font: "700 19px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", color: i < (b.rating || 0) ? "var(--red)" : "var(--line)" },
+            st: { border: 0, background: "transparent", padding: "0 1px", font: "600 19px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", cursor: "pointer", color: i < (b.rating || 0) ? "var(--red)" : "var(--line)" },
             pick: () => { mut((x) => { const q = x.books.filter((y) => y.id === b.id)[0]; q.rating = q.rating === i + 1 ? 0 : i + 1; }); },
           })),
           cycle: () => { mut((x) => { const q = x.books.filter((y) => y.id === b.id)[0]; q.status = cyc[q.status] || "To read"; }); },
@@ -947,7 +947,7 @@ export function useLifeOS() {
             toast("Reading", "Review saved for “" + b.title + "”.");
           },
           quotes: (b.quotes || []).map((q, qi) => ({
-            key: qi, text: "“" + q + "”", st: { flex: 1, minWidth: 0, font: "700 14px/1.6 'Plus Jakarta Sans',system-ui,sans-serif", fontStyle: "italic", color: "var(--muted)", whiteSpace: "pre-wrap" },
+            key: qi, text: "“" + q + "”", st: { flex: 1, minWidth: 0, font: "600 14px/1.6 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", fontStyle: "italic", color: "var(--muted)", whiteSpace: "pre-wrap" },
             remove: () => { mut((x) => { const bk = x.books.filter((y) => y.id === b.id)[0]; bk.quotes = bk.quotes.filter((_, j) => j !== qi); }); },
           })),
           addQuote: (e) => {
@@ -1256,5 +1256,5 @@ export function useLifeOS() {
 }
 
 function strikeStyle(done, size) {
-  return { display: "block", font: "700 " + (size || 15) + "px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", textDecoration: done ? "line-through" : "none", color: done ? "var(--faint)" : "var(--text)" };
+  return { display: "block", font: "600 " + (size || 15) + "px/1.35 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", textDecoration: done ? "line-through" : "none", color: done ? "var(--faint)" : "var(--text)" };
 }

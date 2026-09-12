@@ -15,7 +15,7 @@ export default function NutritionTab({ nutri, getRef }) {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <button onClick={nutri.weekNav.prev} className="btn btn-small" style={{ padding: "7px 11px" }}>←</button>
-            <span style={{ font: "800 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", flex: 1, textAlign: "center" }}>{nutri.weekNav.label}</span>
+            <span style={{ font: "700 13px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", flex: 1, textAlign: "center" }}>{nutri.weekNav.label}</span>
             <button onClick={nutri.weekNav.next} className="btn btn-small" style={{ padding: "7px 11px" }}>→</button>
             {!nutri.weekNav.isThisWeek && <button onClick={nutri.weekNav.today} className="link-btn" style={{ textDecoration: "none" }}>Today</button>}
           </div>
@@ -43,11 +43,11 @@ export default function NutritionTab({ nutri, getRef }) {
               {nutri.selMeals.map((m) => (
                 <div key={m.key} className="row-line">
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-                    <span style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--hint)" }}>{m.slot} · {m.time}</span>
+                    <span style={{ font: "600 11.5px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--hint)" }}>{m.slot} · {m.time}</span>
                   </div>
-                  <div style={{ font: "700 16px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", marginTop: 6 }}>{m.title}</div>
-                  <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 4 }}>{m.macros}</div>
-                  <div style={{ font: "700 12.5px/1.5 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 3 }}>{m.ingLine}</div>
+                  <div style={{ font: "600 16px/1.35 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", marginTop: 6 }}>{m.title}</div>
+                  <div style={{ font: "600 12.5px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", marginTop: 4 }}>{m.macros}</div>
+                  <div style={{ font: "600 12.5px/1.5 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)", marginTop: 3 }}>{m.ingLine}</div>
                   <div style={{ marginTop: 9 }}>
                     <label className="field-label">Choose this meal for every {m.dayTypeLabel}</label>
                     <select value={m.chooseValue} onChange={(e) => m.choose(e.target.value)} className="ln" style={{ marginTop: 4 }}>
@@ -63,8 +63,8 @@ export default function NutritionTab({ nutri, getRef }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(90px,1fr))", gap: 18, marginTop: 16 }}>
                 {nutri.totals.map((t) => (
                   <div key={t.label}>
-                    <div style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--hint)" }}>{t.label}</div>
-                    <div style={{ font: "800 25px/1 'Plus Jakarta Sans',system-ui,sans-serif", marginTop: 7 }}>{t.val}</div>
+                    <div style={{ font: "600 11.5px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--hint)" }}>{t.label}</div>
+                    <div style={{ font: "700 25px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", marginTop: 7 }}>{t.val}</div>
                   </div>
                 ))}
               </div>
@@ -87,7 +87,7 @@ export default function NutritionTab({ nutri, getRef }) {
                 {!m.editing && (
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                      <span style={{ font: "700 16px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" }}>{m.name}</span>
+                      <span style={{ font: "600 16px/1.35 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif" }}>{m.name}</span>
                       <span style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
                         <button onClick={m.edit} className="link-btn" style={{ textDecoration: "none", fontSize: 12.5 }}>Edit</button>
                         <button onClick={m.remove} title="Delete" className="btn-x">✕</button>
@@ -97,8 +97,8 @@ export default function NutritionTab({ nutri, getRef }) {
                       <span style={m.slotTag}>{m.slot} · {m.time}</span>
                       <span style={m.dayTag}>{m.dayTxt}</span>
                     </div>
-                    <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 7 }}>{m.macros}</div>
-                    <div style={{ font: "700 12.5px/1.5 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 3 }}>{m.ingLine}</div>
+                    <div style={{ font: "600 12.5px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", marginTop: 7 }}>{m.macros}</div>
+                    <div style={{ font: "600 12.5px/1.5 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)", marginTop: 3 }}>{m.ingLine}</div>
                   </>
                 )}
                 {m.editing && (
@@ -191,18 +191,18 @@ export default function NutritionTab({ nutri, getRef }) {
               <span className="section-title green" style={{ border: 0, padding: 0 }}>Grocery list</span>
               <button onClick={nutri.regen} className="link-btn">Regenerate</button>
             </div>
-            <div style={{ font: "700 13px/1.5 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", margin: "10px 0 2px" }}>{nutri.shopMeta}</div>
+            <div style={{ font: "600 13px/1.5 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", margin: "10px 0 2px" }}>{nutri.shopMeta}</div>
             {nutri.shop.map((c) => (
               <div key={c.cat} style={{ marginTop: 18 }}>
-                <div style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--red)" }}>{c.cat}</div>
+                <div style={{ font: "600 11.5px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--red)" }}>{c.cat}</div>
                 {c.items.map((i) => (
                   <div key={i.key} style={{ display: "flex", gap: 9, alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--line2)" }}>
                     <span onClick={i.toggle} style={i.box}>{i.mark}</span>
                     <span style={i.name}>{i.n}</span>
                     <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
-                      <button onClick={i.minus} style={{ border: "1px solid var(--line)", background: "transparent", width: 26, height: 26, borderRadius: 99, font: "700 14px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", padding: 0 }}>−</button>
-                      <span style={{ font: "700 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", minWidth: 62, textAlign: "right", whiteSpace: "nowrap" }}>{i.q}</span>
-                      <button onClick={i.plus} style={{ border: "1px solid var(--line)", background: "transparent", width: 26, height: 26, borderRadius: 99, font: "700 14px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", padding: 0 }}>+</button>
+                      <button onClick={i.minus} style={{ border: "1px solid var(--line)", background: "transparent", width: 26, height: 26, borderRadius: 99, font: "600 14px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", cursor: "pointer", padding: 0 }}>−</button>
+                      <span style={{ font: "600 13px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", minWidth: 62, textAlign: "right", whiteSpace: "nowrap" }}>{i.q}</span>
+                      <button onClick={i.plus} style={{ border: "1px solid var(--line)", background: "transparent", width: 26, height: 26, borderRadius: 99, font: "600 14px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", cursor: "pointer", padding: 0 }}>+</button>
                       <button onClick={i.remove} title="Remove" className="btn-x">✕</button>
                     </span>
                   </div>

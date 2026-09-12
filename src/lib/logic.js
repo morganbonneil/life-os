@@ -86,24 +86,24 @@ export function box(done, color) {
     border: "1px solid " + (done ? color || "var(--green)" : "var(--input-line)"),
     background: done ? color || "var(--green)" : "transparent",
     color: "var(--bg)", borderRadius: "9px", display: "flex", alignItems: "center", justifyContent: "center",
-    font: "700 11px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer",
+    font: "600 11px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", cursor: "pointer",
   };
 }
 export function strike(done, size) {
-  return { display: "block", font: "700 " + (size || 15) + "px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", textDecoration: done ? "line-through" : "none", color: done ? "var(--faint)" : "var(--text)" };
+  return { display: "block", font: "600 " + (size || 15) + "px/1.35 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", textDecoration: done ? "line-through" : "none", color: done ? "var(--faint)" : "var(--text)" };
 }
 export function bar(pct, c) {
   return { height: "3px", width: Math.max(0, Math.min(100, pct)) + "%", background: c || "var(--green)" };
 }
 export function chip(active, accent) {
   const a = accent || "var(--green)";
-  return { border: "1px solid " + (active ? a : "var(--line)"), background: active ? a : "transparent", color: active ? "var(--bg)" : "var(--muted)", padding: "6px 11px", borderRadius: "99px", font: "700 12.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", whiteSpace: "nowrap" };
+  return { border: "1px solid " + (active ? a : "var(--line)"), background: active ? a : "transparent", color: active ? "var(--bg)" : "var(--muted)", padding: "6px 11px", borderRadius: "99px", font: "600 12.5px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", cursor: "pointer", whiteSpace: "nowrap" };
 }
 export function tag(color) {
-  return { border: "1px solid " + color, color, background: "transparent", padding: "4px 9px", borderRadius: "99px", font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".08em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" };
+  return { border: "1px solid " + color, color, background: "transparent", padding: "4px 9px", borderRadius: "99px", font: "600 11.5px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", letterSpacing: ".08em", textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer" };
 }
 export function prose(size) {
-  return { font: "700 " + (size || 15) + "px/1.6 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--text)", whiteSpace: "pre-wrap", marginTop: "6px" };
+  return { font: "600 " + (size || 15) + "px/1.6 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--text)", whiteSpace: "pre-wrap", marginTop: "6px" };
 }
 export function macroTxt(m) {
   return m.kcal + " kcal · P " + m.p + " g · C " + m.c + " g · F " + m.f + " g";

@@ -69,7 +69,7 @@ export default function TrackingTab({ track, getRef }) {
               ) : (
                 <div
                   onClick={track.bookDetail.pickCover} title="Add a cover photo"
-                  style={{ width: 84, height: 126, flex: "none", borderRadius: 10, border: "1px dashed var(--input-line)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", font: "700 11px/1.2 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", textAlign: "center", padding: 4 }}
+                  style={{ width: 84, height: 126, flex: "none", borderRadius: 10, border: "1px dashed var(--input-line)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", font: "600 11px/1.2 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)", textAlign: "center", padding: 4 }}
                 >
                   + cover
                 </div>
@@ -80,22 +80,22 @@ export default function TrackingTab({ track, getRef }) {
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                  <span style={{ font: "800 20px/1.3 'Plus Jakarta Sans',system-ui,sans-serif" }}>{track.bookDetail.t}</span>
+                  <span style={{ font: "700 20px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif" }}>{track.bookDetail.t}</span>
                   <button onClick={track.bookDetail.cycle} style={track.bookDetail.tag}>{track.bookDetail.status}</button>
                   <button onClick={track.bookDetail.remove} title="Delete" className="btn-x">✕</button>
                 </div>
-                <div style={{ font: "700 13px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{track.bookDetail.a}</div>
+                <div style={{ font: "600 13px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{track.bookDetail.a}</div>
                 <div style={{ display: "flex", gap: 2, alignItems: "center", marginTop: 9, flexWrap: "wrap" }}>
                   {track.bookDetail.stars.map((s, i) => (
                     <button key={i} onClick={s.pick} title={s.title} style={s.st}>★</button>
                   ))}
-                  <span style={{ font: "700 13px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginLeft: 8, whiteSpace: "nowrap" }}>{track.bookDetail.ratingTxt}</span>
+                  <span style={{ font: "600 13px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", marginLeft: 8, whiteSpace: "nowrap" }}>{track.bookDetail.ratingTxt}</span>
                 </div>
                 {track.bookDetail.cover && <button onClick={track.bookDetail.removeCover} className="link-btn" style={{ textDecoration: "none", marginTop: 8, fontSize: 11.5 }}>Remove cover</button>}
               </div>
             </div>
             <form onSubmit={track.bookDetail.saveReview} style={{ marginTop: 16 }}>
-              <textarea ref={track.bookDetail.refReview} rows={3} defaultValue={track.bookDetail.review} placeholder="What you thought of it…" style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 9, font: "700 14px/1.55 'Plus Jakarta Sans',system-ui,sans-serif", resize: "vertical" }} />
+              <textarea ref={track.bookDetail.refReview} rows={3} defaultValue={track.bookDetail.review} placeholder="What you thought of it…" style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 9, font: "600 14px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", resize: "vertical" }} />
               <button type="submit" className="btn btn-small" style={{ marginTop: 8 }}>Save review</button>
             </form>
             <div style={{ marginTop: 14 }}>
@@ -126,11 +126,11 @@ export default function TrackingTab({ track, getRef }) {
               </div>
               <div className="field">
                 <label>Details</label>
-                <textarea ref={getRef("lText")} rows={5} placeholder="One thing you learned today…" style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 12, font: "700 15px/1.6 'Plus Jakarta Sans',system-ui,sans-serif", resize: "vertical" }} />
+                <textarea ref={getRef("lText")} rows={5} placeholder="One thing you learned today…" style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 12, font: "600 15px/1.6 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", resize: "vertical" }} />
               </div>
               <button type="submit" className="btn btn-green" style={{ marginTop: 10 }}>Save learning</button>
             </form>
-            <div style={{ font: "700 13px/1.55 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 14 }}>{track.learnStreak}</div>
+            <div style={{ font: "600 13px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", marginTop: 14 }}>{track.learnStreak}</div>
           </section>
 
           <section>
@@ -140,8 +140,8 @@ export default function TrackingTab({ track, getRef }) {
             </div>
             {track.learnings.map((l) => (
               <div key={l.key} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline", padding: "12px 0", borderBottom: "1px solid var(--line2)" }}>
-                <span onClick={l.open} style={{ font: "700 14.5px/1.35 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer", textDecoration: "underline" }}>{l.title}</span>
-                <span style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", whiteSpace: "nowrap" }}>{l.date}</span>
+                <span onClick={l.open} style={{ font: "600 14.5px/1.35 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", cursor: "pointer", textDecoration: "underline" }}>{l.title}</span>
+                <span style={{ font: "600 11.5px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)", whiteSpace: "nowrap" }}>{l.date}</span>
               </div>
             ))}
             <div className="rows-empty">{track.learnEmpty}</div>
@@ -161,8 +161,8 @@ export default function TrackingTab({ track, getRef }) {
             </div>
             {!track.learningDetail.editing ? (
               <>
-                <div style={{ font: "800 20px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", marginTop: 14 }}>{track.learningDetail.title}</div>
-                <div style={{ font: "700 11.5px/1 'Plus Jakarta Sans',system-ui,sans-serif", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--faint)", marginTop: 6 }}>{track.learningDetail.date}</div>
+                <div style={{ font: "700 20px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", marginTop: 14 }}>{track.learningDetail.title}</div>
+                <div style={{ font: "600 11.5px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--faint)", marginTop: 6 }}>{track.learningDetail.date}</div>
                 <div style={Object.assign({}, track.learningDetail.textSt, { marginTop: 14 })}>{track.learningDetail.text}</div>
               </>
             ) : (
@@ -173,7 +173,7 @@ export default function TrackingTab({ track, getRef }) {
                 </div>
                 <div className="field">
                   <label>Details</label>
-                  <textarea ref={track.learningDetail.refText} rows={5} defaultValue={track.learningDetail.text} style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 12, font: "700 15px/1.6 'Plus Jakarta Sans',system-ui,sans-serif", resize: "vertical" }} />
+                  <textarea ref={track.learningDetail.refText} rows={5} defaultValue={track.learningDetail.text} style={{ width: "100%", border: "1px solid var(--line)", background: "var(--bg)", borderRadius: 14, padding: 12, font: "600 15px/1.6 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", resize: "vertical" }} />
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                   <button type="submit" className="btn btn-green btn-small">Save changes</button>
@@ -197,7 +197,7 @@ export default function TrackingTab({ track, getRef }) {
                 className="flashcard"
                 onClick={!track.flash.study.flipped ? track.flash.study.flip : undefined}
               >
-                <div style={{ font: "800 26px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", textAlign: "center" }}>
+                <div style={{ font: "700 26px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", textAlign: "center" }}>
                   {track.flash.study.flipped ? track.flash.study.back : track.flash.study.front}
                 </div>
                 {!track.flash.study.flipped && <div className="hint" style={{ marginTop: 14, textAlign: "center" }}>Tap to reveal</div>}
@@ -219,12 +219,12 @@ export default function TrackingTab({ track, getRef }) {
               <div className="section-title green" style={{ border: 0, padding: 0 }}>Pass done</div>
               <div style={{ display: "flex", gap: 24, marginTop: 18 }}>
                 <div>
-                  <div style={{ font: "800 34px/1 'Plus Jakarta Sans',system-ui,sans-serif" }}>{track.flash.study.knownCount}</div>
-                  <div style={{ font: "700 12px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>known</div>
+                  <div style={{ font: "700 34px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif" }}>{track.flash.study.knownCount}</div>
+                  <div style={{ font: "600 12px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>known</div>
                 </div>
                 <div>
-                  <div style={{ font: "800 34px/1 'Plus Jakarta Sans',system-ui,sans-serif" }}>{track.flash.study.unknownCount}</div>
-                  <div style={{ font: "700 12px/1 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>to revisit</div>
+                  <div style={{ font: "700 34px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif" }}>{track.flash.study.unknownCount}</div>
+                  <div style={{ font: "600 12px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>to revisit</div>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
@@ -242,7 +242,7 @@ export default function TrackingTab({ track, getRef }) {
                   <button onClick={track.flash.deck.back} className="link-btn" style={{ textDecoration: "none" }}>← Decks</button>
                   <span className="count">{track.flash.deck.total} cards · {track.flash.deck.due} due · {track.flash.deck.mastered} mastered</span>
                 </div>
-                <div style={{ font: "800 22px/1.25 'Plus Jakarta Sans',system-ui,sans-serif", marginTop: 12 }}>{track.flash.deck.name}</div>
+                <div style={{ font: "700 22px/1.25 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", marginTop: 12 }}>{track.flash.deck.name}</div>
                 <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
                   <button onClick={track.flash.deck.studyDue} className="btn btn-green" disabled={!track.flash.deck.due}>Study due ({track.flash.deck.due})</button>
                   <button onClick={track.flash.deck.studyAll} className="btn btn-green-outline" disabled={!track.flash.deck.total}>Practice all ({track.flash.deck.total})</button>
@@ -250,10 +250,10 @@ export default function TrackingTab({ track, getRef }) {
                 {track.flash.deck.cards.map((c) => (
                   <div key={c.key} style={{ padding: "13px 0", borderBottom: "1px solid var(--line2)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                      <span style={{ font: "700 15px/1.35 'Plus Jakarta Sans',system-ui,sans-serif" }}>{c.front} → {c.back}</span>
+                      <span style={{ font: "600 15px/1.35 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif" }}>{c.front} → {c.back}</span>
                       <button onClick={c.remove} title="Delete" className="btn-x">✕</button>
                     </div>
-                    <div style={{ font: "700 11.5px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{c.meta}</div>
+                    <div style={{ font: "600 11.5px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--faint)", marginTop: 4 }}>{c.meta}</div>
                   </div>
                 ))}
                 <div className="rows-empty">{track.flash.deck.cardsEmpty}</div>
@@ -288,13 +288,13 @@ export default function TrackingTab({ track, getRef }) {
                     {!dk.editing ? (
                       <>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                          <span onClick={dk.open} style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer" }}>{dk.name}</span>
+                          <span onClick={dk.open} style={{ font: "700 17px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", cursor: "pointer" }}>{dk.name}</span>
                           <span style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
                             <button onClick={dk.edit} className="link-btn" style={{ textDecoration: "none", fontSize: 12.5 }}>Edit</button>
                             <button onClick={dk.remove} title="Delete" className="btn-x">✕</button>
                           </span>
                         </div>
-                        <div style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)", marginTop: 4 }}>{dk.total} cards · {dk.due} due today</div>
+                        <div style={{ font: "600 12.5px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)", marginTop: 4 }}>{dk.total} cards · {dk.due} due today</div>
                         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                           <button onClick={dk.open} className="btn btn-small">Open</button>
                           <button onClick={dk.studyDue} className="btn btn-green btn-small" disabled={!dk.due}>Study due ({dk.due})</button>
@@ -336,8 +336,8 @@ export default function TrackingTab({ track, getRef }) {
                 <div className="section-title green">Languages</div>
                 {track.flash.languages.map((l) => (
                   <div key={l.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid var(--line2)" }}>
-                    <span onClick={l.open} style={{ font: "800 17px/1.3 'Plus Jakarta Sans',system-ui,sans-serif", cursor: "pointer" }}>{l.language}</span>
-                    <span style={{ font: "700 12.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif", color: "var(--muted)" }}>{l.total} cards · {l.due} due</span>
+                    <span onClick={l.open} style={{ font: "700 17px/1.3 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", cursor: "pointer" }}>{l.language}</span>
+                    <span style={{ font: "600 12.5px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif", color: "var(--muted)" }}>{l.total} cards · {l.due} due</span>
                   </div>
                 ))}
                 <div className="rows-empty">{track.flash.languagesEmpty}</div>
