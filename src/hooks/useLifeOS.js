@@ -442,8 +442,7 @@ export function useLifeOS() {
 
     const v = {
       tabs: TAB_DEFS.map((t) => ({
-        num: t[2], label: t[1], pick: () => setTab(t[0]),
-        st: { flex: 1, border: 0, borderTop: "3px solid " + (tab === t[0] ? "var(--green)" : "transparent"), marginTop: "-3px", background: tab === t[0] ? "var(--panel)" : "transparent", color: tab === t[0] ? "var(--text)" : "var(--muted)", padding: "11px 4px 13px", cursor: "pointer", fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif", fontWeight: tab === t[0] ? 800 : 700 },
+        key: t[0], label: t[1], active: tab === t[0], pick: () => setTab(t[0]),
       })),
       tab,
       isToday: tab === "today", isNutri: tab === "nutrition", isSprint: tab === "sprint", isGoals: tab === "goals", isTrack: tab === "track", isSettings: tab === "settings",

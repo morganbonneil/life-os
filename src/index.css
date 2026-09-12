@@ -117,29 +117,57 @@ input, select, textarea, button {
   display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center;
   cursor: pointer; transition: opacity .5s ease;
 }
-.splash span {
-  font: 800 26px/1.3 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: -.01em;
+.splash-orb {
+  position: relative; width: min(72vw, 300px); aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+}
+.splash-orb .voice-orb { position: absolute; inset: 0; }
+.splash-orb span {
+  position: relative; z-index: 1;
+  font: 800 20px/1.3 "Plus Jakarta Sans", system-ui, sans-serif; letter-spacing: -.01em; color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .55);
 }
 .splash-hide { opacity: 0; pointer-events: none; }
 
 .app { min-height: 100vh; background: var(--bg); padding: 0 0 calc(96px + env(safe-area-inset-bottom)); }
 
-/* ---- bottom nav ---- */
+/* ---- bottom nav: animated wavy tab bar ---- */
 .bottom-nav {
-  position: fixed; left: 0; right: 0; bottom: 0;
-  background: var(--bg); border-top: 3px solid var(--text);
-  display: flex; z-index: 40;
-  padding-bottom: env(safe-area-inset-bottom);
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: flex; justify-content: center;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  pointer-events: none;
 }
-.bottom-nav button {
-  border: 0; cursor: pointer; font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+.menu-clip-defs { position: absolute; width: 0; height: 0; }
+.menu {
+  --timeOut: .35s;
+  position: relative; display: flex; align-items: center; justify-content: space-around;
+  width: 100%; max-width: 420px; height: 58px; margin: 0; padding: 0 6px; list-style: none;
+  pointer-events: auto;
 }
-.bottom-nav button .num {
-  display: block; font: 700 9.5px/1 "Plus Jakarta Sans", system-ui, sans-serif;
-  letter-spacing: .16em; color: var(--faint);
+/* Purely decorative — the wavy silhouette lives on its own layer behind the
+   buttons so the clip-path's concave notches never eat a tab's click area. */
+.menu__bg {
+  position: absolute; inset: 0; z-index: 0;
+  background: var(--panel);
+  border: 1.5px solid var(--green);
+  clip-path: url(#menu-clip-path);
+  pointer-events: none;
+  /* box-shadow would be clipped away along with the rest of the box, so the
+     drop shadow is a filter instead — it follows the clipped silhouette. */
+  filter: drop-shadow(0 6px 18px var(--shadow));
 }
-.bottom-nav button .label {
-  display: block; margin-top: 6px; font-size: 12.5px; letter-spacing: .04em;
+.menu__item {
+  position: relative; z-index: 1; flex: 1; height: 100%; border: 0; background: transparent;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  color: var(--faint); transition: color .25s ease, transform var(--timeOut) cubic-bezier(.34, 1.56, .64, 1);
+}
+.menu__item .icon { width: 22px; height: 22px; transition: transform var(--timeOut) cubic-bezier(.34, 1.56, .64, 1); }
+.menu__item.active { color: var(--bg); transform: translateY(-10px); }
+.menu__border {
+  position: absolute; left: 0; top: 6px; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--green); box-shadow: 0 6px 14px var(--shadow);
+  transition: transform var(--timeOut) cubic-bezier(.34, 1.56, .64, 1);
+  z-index: 0;
 }
 
 /* ---- toasts ---- */

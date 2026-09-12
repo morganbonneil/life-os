@@ -9,18 +9,22 @@ import SprintTab from "./components/SprintTab.jsx";
 import GoalsTab from "./components/GoalsTab.jsx";
 import TrackingTab from "./components/TrackingTab.jsx";
 import SettingsTab from "./components/SettingsTab.jsx";
+import { VoicePoweredOrb } from "./components/VoicePoweredOrb.jsx";
 
 function Splash({ onDone }) {
   const [hiding, setHiding] = useState(false);
   useEffect(() => {
-    const t1 = setTimeout(() => setHiding(true), 2200);
-    const t2 = setTimeout(onDone, 2700);
+    const t1 = setTimeout(() => setHiding(true), 3000);
+    const t2 = setTimeout(onDone, 3500);
     return () => { clearTimeout(t1); clearTimeout(t2); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <div className={"splash" + (hiding ? " splash-hide" : "")} onClick={onDone}>
-      <span>C’est toi qui décides</span>
+      <div className="splash-orb">
+        <VoicePoweredOrb enableVoiceControl={false} />
+        <span>you decide</span>
+      </div>
     </div>
   );
 }
